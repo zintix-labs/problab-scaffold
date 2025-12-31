@@ -1,3 +1,17 @@
+// Copyright 2025 Zintix Labs
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package main provides the scaffold's server entrypoint.
 //
 // This command is intentionally thin: it only parses flags, wires a default
@@ -38,8 +52,8 @@ func main() {
 // be copied and modified by end users.
 type config struct {
 	Log         string // Logger mode: dev|prod|discard
-	SlotBufSize int    // Number of machine instances per game (pool size)
 	Mode        string // Server run mode: dev|prod
+	SlotBufSize int    // Number of machine instances per game (pool size)
 }
 
 // loadConfigFromFlags parses CLI flags and builds a `svrcfg.SvrCfg`.
@@ -62,10 +76,13 @@ type config struct {
 func loadConfigFromFlags() (*svrcfg.SvrCfg, error) {
 	cfg := new(config)
 	flag.StringVar(&cfg.Log, "log", "dev", "log mode: dev|prod|discard")
-	flag.IntVar(&cfg.SlotBufSize, "buf", 3, "number of machine instances per game")
 	flag.StringVar(&cfg.Mode, "mode", "prod", "svr mode: dev|prod")
+	flag.IntVar(&cfg.SlotBufSize, "buf", 3, "number of machine instances per game")
 
 	flag.Parse()
+
+	// Print the raw flag values exactly as provided by the user.
+	fmt.Printf("[scaffold][flags] -log=%s -mode=%s -buf=%d\n", cfg.Log, cfg.Mode, cfg.SlotBufSize)
 
 	// Create an async logger with a small internal buffer. Most users should keep this as-is.
 	log := logger.NewDefaultAsyncLogger(cfg.normLog())

@@ -22,7 +22,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/zintix-labs/problab/demo"
+	"github.com/zintix-labs/problab-scaffold/pkg/scfg"
 	"github.com/zintix-labs/problab/server"
 )
 
@@ -41,11 +41,11 @@ func runDevPanel() {
 			log.Fatal("open browser failed:" + err.Error())
 		}
 	}()
-	scfg, err := demo.NewServerConfig()
+	cfg, err := scfg.NewServerConfig()
 	if err != nil {
 		log.Fatal("set server configs error:" + err.Error())
 	}
-	server.Run(scfg)
+	server.Run(cfg)
 }
 
 func waitForTCP(addr string, timeout time.Duration) error {
