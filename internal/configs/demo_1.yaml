@@ -1,0 +1,202 @@
+# Copyright 2025 Zintix Labs
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [Document URL] http://localhost:????/gdd
+
+# GID: unique within the catalog
+game_id: 1
+    
+# GameName: human-readable name, recommended unique within the catalog
+game_name: demo_cascade
+
+# LogicKey: selects the internal logic implementation (can be shared by multiple games)
+logic_key: demo_cascade
+
+# Bet units for each bet_mode (index-aligned). 
+# Example: 
+# bet_units[0] is the base unit for bet_mode=0.
+# bet_units[1] is for buy feature bet_mode=1
+bet_units : [30]
+
+max_win_limit : 600000
+
+# Game mode settings. Each entry represents a state; 
+# the game transitions between states 
+# (e.g., BaseGame -> FreeGame).
+game_mode_settings:
+  - # GameModeSettings[0]: BaseGame
+    # Screen settings
+    screen_setting:
+      columns: 5
+      rows: 5
+      damp: 1
+    # Screen generation settings
+    gen_screen_setting:
+      gen_reel_type: GenReelByReelIdx
+      reel_set_group:  
+        - # ReelSetIdx[0]
+          weight : 1
+          reels :
+            - # Reel[0] 
+              # `weights` is optional.
+              # - If omitted: all stops are treated as equal weight.
+              # - If provided: it MUST have the same length as `symbols` (one weight per stop).
+              # - Each weight must be a non-negative integer, and the total sum MUST be > 0.
+              symbols : [8, 5, 4, 5, 4, 9, 9, 3, 8, 4, 3, 7, 7, 9, 8, 4, 5, 5, 7, 7, 3, 7, 4, 7, 2, 9, 7, 5, 6, 9, 7, 3, 8, 3, 8, 5, 9, 4, 8, 9, 8, 6, 9, 7, 8, 3, 4, 9, 8, 6, 9, 7, 8, 3, 4, 9, 8, 6, 9, 7, 8, 3, 4]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[1]
+              symbols : [6, 3, 8, 7, 7, 7, 3, 3, 3, 3, 8, 1, 6, 5, 8, 7, 6, 7, 8, 8, 4, 9, 6, 7, 3, 7, 2, 9, 8, 9, 8, 6, 7, 9, 9, 9, 9, 5, 4, 6, 6, 4, 4, 9, 7, 7, 7, 6, 6, 4, 4, 9, 7, 7, 7, 2, 6, 4, 4, 9, 7, 7, 7]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[2]
+              symbols : [6, 9, 6, 7, 1, 4, 7, 8, 7, 4, 9, 9, 3, 8, 1, 4, 3, 7, 7, 4, 9, 4, 9, 5, 9, 2, 7, 8, 4, 3, 9, 7, 7, 3, 3, 9, 8, 5, 5, 4, 7, 4, 8, 7, 6, 9, 8, 8, 6, 9, 6, 6, 7, 4, 9, 9, 3]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[3]
+              symbols : [8, 6, 2, 7, 7, 9, 9, 7, 7, 3, 3, 1, 9, 9, 7, 8, 1, 8, 6, 8, 8, 7, 7, 9, 9, 9, 7, 6, 5, 8, 3, 3, 5, 4, 4, 9, 3, 3, 9, 4, 9, 4, 7, 5, 8, 9, 8, 1, 4, 9, 6, 9, 7, 9, 7, 8, 8]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[4] 
+              symbols : [7, 7, 4, 4, 6, 7, 7, 4, 7, 7, 7, 4, 8, 8, 4, 9, 9, 7, 7, 8, 7, 7, 7, 8, 9, 6, 7, 4, 6, 4, 8, 3, 8, 6, 9, 4, 9, 4, 8, 4, 8, 5, 4, 8, 8, 6, 6, 9, 9, 9, 5, 4, 8, 9, 7, 8, 7]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        - # ReelSetIdx[1] 
+          weight : 0
+          reels : 
+            - # Reel[0]
+              symbols : [2, 2, 7, 7, 5, 5, 7, 7, 4, 4, 2, 1, 6, 6, 6, 1, 4, 4, 7, 7, 8, 7, 3, 3, 4, 4, 6, 6, 7, 9, 1, 8, 8]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[1]
+              symbols : [6, 8, 1, 8, 8, 6, 2, 6, 6, 6, 2, 5, 5, 4, 9, 9, 5, 4, 8, 8, 3, 5, 5, 9, 3, 6, 3, 3, 4, 3, 3, 5, 4]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[2]
+              symbols : [8, 2, 3, 3, 2, 2, 3, 9, 1, 4, 4, 6, 6, 4, 8, 8, 7, 7, 2, 6, 4, 9, 9, 9, 8, 4, 5, 3, 9, 9, 4, 8, 9]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[3]
+              symbols : [7, 8, 2, 7, 3, 2, 2, 9, 8, 8, 2, 5, 2, 6, 4, 3, 3, 9, 5, 5, 7, 6, 8, 9, 8, 6, 2, 2, 7, 4, 3, 3, 2]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[4]
+              symbols : [5, 8, 8, 9, 5, 7, 9, 8, 8, 4, 5, 8, 9, 9, 3, 5, 5, 8, 7, 3, 7, 7, 4, 6, 8, 2, 7, 6, 7, 7, 8, 7, 7]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    # -----------------------------------------------------------------------------
+    # Symbols & Paytable
+    # -----------------------------------------------------------------------------
+    # Notes:
+    # - Symbol ID `0` is often reserved for special handling in game logic (e.g., Empty/Null).
+    #   We recommend starting reel-strip symbols from `1`.
+    # - Keep `Z1` in the first slot as a "reserved / unused" marker.
+    # - For the full list of available symbol IDs and naming conventions, see:
+    #   https://github.com/zintix-labs/problab/tree/main/spec/symbol_settings
+    # - `pay_table` must define a payout entry for EVERY declared symbol.
+    symbol_setting:
+        symbol_used : [Z1,C1,W1,H1,H2,H3,H4,L1,L2,L3]
+        pay_table : 
+          - [0, 0, 0, 0,  0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
+          - [0, 0, 0, 0,  0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
+          - [0, 0, 0, 0,  0,  0,  0,  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0]
+          - [0, 0, 0, 0, 30, 48, 72,120, 240, 360, 540, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750]
+          - [0, 0, 0, 0, 24, 36, 60, 90, 180, 300, 420, 540, 540, 540, 540, 540, 540, 540, 540, 540, 540, 540, 540, 540, 540]
+          - [0, 0, 0, 0, 15, 30, 60, 72, 150, 240, 360, 480, 480, 480, 480, 480, 480, 480, 480, 480, 480, 480, 480, 480, 480]
+          - [0, 0, 0, 0, 15, 30, 45, 60, 120, 210, 300, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420]
+          - [0, 0, 0, 0, 10, 20, 30, 45,  75, 150, 240, 360, 360, 360, 360, 360, 360, 360, 360, 360, 360, 360, 360, 360, 360]
+          - [0, 0, 0, 0, 10, 20, 30, 45,  75, 150, 240, 330, 330, 330, 330, 330, 330, 330, 330, 330, 330, 330, 330, 330, 330]
+          - [0, 0, 0, 0, 10, 20, 30, 45,  75, 150, 240, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300, 300]
+    # Win evaluation settings
+    hit_setting:
+      bet_type: cluster
+      line_table: 
+
+
+  - # GameModeSettings[1] : FreeGame
+    # Screen settings
+    screen_setting:
+        columns: 5
+        rows: 5
+        damp: 1
+    # Screen generation settings
+    gen_screen_setting:
+      gen_reel_type: GenReelByReelIdx
+      reel_set_group:
+        - # ReelSetIdx[0]
+          weight : 1
+          reels : 
+            - # Reel[0] 
+              # `weights` is optional.
+              # - If omitted: all stops are treated as equal weight.
+              # - If provided: it MUST have the same length as `symbols` (one weight per stop).
+              # - Each weight must be a non-negative integer, and the total sum MUST be > 0.
+              symbols : [8, 5, 4, 5, 4, 3, 3, 3, 8, 4, 3, 7, 7, 9, 8, 4, 5, 5, 7, 7, 3, 7, 4, 7, 2, 9, 7]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel
+              symbols : [6, 3, 8, 7, 7, 7, 3, 3, 3, 3, 8, 2, 6, 5, 8, 7, 6, 7, 8, 8, 4, 9, 6, 7, 3, 7, 2]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[2]
+              symbols : [6, 9, 6, 7, 2, 4, 7, 8, 7, 4, 3, 3, 3, 8, 2, 4, 3, 7, 7, 4, 9, 4, 9, 5, 9, 2, 7, 8, 4, 3, 3, 7, 7, 3, 3, 9, 8, 5, 5, 4, 7, 4, 8, 7, 6, 9, 8, 8, 6, 9, 6, 6, 7, 4, 9, 9, 3]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[3]
+              symbols : [8, 6, 2, 7, 7, 9, 9, 7, 7, 3, 3, 2, 3, 3, 7, 8, 2, 8, 6, 8, 8, 7, 7, 9, 9, 9, 7, 6, 5, 8, 3, 3, 5, 4, 4, 9, 3, 3, 9, 4, 9, 4, 7, 5, 8, 9, 8, 2, 4, 9, 6, 9, 7, 9, 7, 8, 8]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[4] 
+              symbols : [7, 7, 4, 4, 6, 7, 7, 4, 7, 7, 7, 4, 8, 8, 4, 9, 9, 7, 7, 8, 7, 7, 7, 8, 9, 6, 7, 4, 6, 4, 3, 3, 3, 6, 9, 4, 9, 4, 8, 4, 8, 5, 4, 8, 8, 6, 6, 9, 9, 9, 5, 4, 8, 9, 7, 8, 7]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        
+        - # ReelSetIdx[1] 
+          weight : 0
+          reels : 
+            - # Reel[0]
+              symbols : [2, 2, 7, 7, 5, 5, 7, 7, 4, 4, 2, 2, 6, 6, 6, 2, 4, 4, 7, 7, 8, 7, 3, 3, 4, 4, 6, 6, 7, 9, 2, 8, 8]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[1]
+              symbols : [6, 8, 2, 3, 3, 6, 2, 6, 6, 6, 2, 5, 5, 4, 9, 9, 5, 4, 8, 8, 3, 5, 5, 9, 3, 6, 3, 3, 4, 3, 3, 5, 4]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[2]
+              symbols : [8, 2, 3, 3, 2, 2, 3, 3, 2, 4, 4, 6, 6, 4, 8, 8, 7, 7, 2, 6, 4, 3, 3, 9, 8, 4, 5, 3, 9, 9, 4, 8, 9]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[3]
+              symbols : [7, 8, 2, 7, 3, 2, 2, 9, 8, 8, 2, 5, 2, 6, 4, 3, 3, 9, 5, 5, 7, 6, 8, 9, 8, 6, 2, 2, 7, 4, 3, 3, 2]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            - # Reel[4]
+              symbols : [5, 8, 8, 9, 5, 7, 9, 8, 8, 4, 5, 8, 9, 9, 3, 5, 5, 8, 7, 3, 7, 7, 4, 6, 8, 2, 7, 6, 7, 7, 8, 7, 7]
+              weights : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+              
+    # -----------------------------------------------------------------------------
+    # Symbols & Paytable
+    # -----------------------------------------------------------------------------
+    # Notes:
+    # - Symbol ID `0` is often reserved for special handling in game logic (e.g., Empty/Null).
+    #   We recommend starting reel-strip symbols from `1`.
+    # - Keep `Z1` in the first slot as a "reserved / unused" marker.
+    # - For the full list of available symbol IDs and naming conventions, see:
+    #   https://github.com/zintix-labs/problab/tree/main/spec/symbol_settings
+    # - `pay_table` must define a payout entry for EVERY declared symbol.
+    symbol_setting:
+      symbol_used : [Z1,C1,W1,H1,H2,H3,H4,L1,L2,L3]
+      pay_table : 
+        - [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        - [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        - [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        - [0,0,0,0,120,150,240,540,750,1000,1250,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500,1500]
+        - [0,0,0,0, 90,120,180,420,540, 750,1000,1250,1250,1250,1250,1250,1250,1250,1250,1250,1250,1250,1250,1250,1250]
+        - [0,0,0,0, 60, 90,150,360,480, 600, 750,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000]
+        - [0,0,0,0, 60, 90,150,300,420, 540, 750,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000]
+        - [0,0,0,0, 40, 60,120,240,360, 480, 600, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840]
+        - [0,0,0,0, 40, 60,120,240,330, 480, 600, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840]
+        - [0,0,0,0, 40, 60,120,240,300, 480, 600, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840, 840]
+    # Win evaluation settings
+    hit_setting:
+      bet_type: cluster
+      line_table: 
+        
+# Extra fixed parameters for demo_simple
+fixed:
+  max_step: 1000
+  free_rounds: 10
+  scatter_pay : 300
+  trigger: 3
