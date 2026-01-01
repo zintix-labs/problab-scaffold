@@ -1,10 +1,10 @@
+🌐 Language: En | [中文](README_ch.md)
+
+---
+
 # Problab Scaffold
 
-*Maintained by **Zintix Labs***
-
-<p align="right">
-  <b>English</b> | <a href="./README_zh.md">中文</a>
-</p>
+<sub>Maintained by <b>Zintix Labs</b> — <a href="https://github.com/nextso">@nextso</a></sub>
 
 A production-ready Problab scaffold for slot game R&D. It is designed to get you running fast and keep game development focused on configs and logic only.
 
