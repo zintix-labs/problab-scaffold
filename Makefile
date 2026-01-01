@@ -124,7 +124,6 @@ run:
 ## boost HTTP Server（go run）
 svr:
 	@printf "$(GREEN)Starting HTTP Server...$(RESET)\n"
-	@printf "$(BLUE)cmd:$(RESET) go run ./cmd/svr %s\n" "$(SVR_ARGS)"
 	@go run ./cmd/svr $(SVR_ARGS)
 
 ## execute binary file
