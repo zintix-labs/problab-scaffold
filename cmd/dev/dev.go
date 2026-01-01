@@ -22,8 +22,11 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/zintix-labs/problab-scaffold/pkg/scfg"
+	"github.com/zintix-labs/problab-scaffold/pkg/engine"
+	"github.com/zintix-labs/problab/errs"
 	"github.com/zintix-labs/problab/server"
+	"github.com/zintix-labs/problab/server/logger"
+	"github.com/zintix-labs/problab/server/svrcfg"
 )
 
 func main() {
@@ -41,7 +44,7 @@ func runDevPanel() {
 			log.Fatal("open browser failed:" + err.Error())
 		}
 	}()
-	cfg, err := scfg.NewServerConfig()
+	cfg, err := newSvrCfg()
 	if err != nil {
 		log.Fatal("set server configs error:" + err.Error())
 	}
@@ -72,4 +75,17 @@ func openBrowser(url string) error {
 		cmd = exec.Command("xdg-open", url)
 	}
 	return cmd.Start()
+}
+
+func newSvrCfg() (*svrcfg.SvrCfg, error) {
+	lab, err := engine.New()
+	if err != nil {
+		return nil, errs.NewFatal("new problab failed:" + err.Error())
+	}
+	scfg := &svrcfg.SvrCfg{
+		Log:         logger.NewDefaultAsyncLogger(logger.ModeDev),
+		SlotBufSize: 1,
+		Problab:     lab,
+	}
+	return scfg, nil
 }

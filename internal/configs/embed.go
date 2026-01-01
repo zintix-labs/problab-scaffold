@@ -21,14 +21,14 @@ import (
 // FS provides embedded default config YAMLs for this scaffold.
 //
 // Important:
-//   - Do NOT delete or move this file unless you also update bootstrap wiring.
+//   - Do NOT delete or move this file unless you also update engine wiring.
 //   - Problab-scaffold expects a *flat* config FS layout by default:
 //   - YAML files are addressed by filename only (no nested paths)
 //   - configs are embedded from the same folder as this file
 //
 // If you want to organize configs into subfolders, you must also adjust:
 //   - the embed pattern(s) below
-//   - the bootstrap/config loading logic that consumes this FS
+//   - the engine/config loading logic that consumes this FS
 //
 // Embed all YAML files in this directory (flat layout).
 //

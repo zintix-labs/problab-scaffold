@@ -15,7 +15,7 @@
 // Package main provides the scaffold's server entrypoint.
 //
 // This command is intentionally thin: it only parses flags, wires a default
-// Problab bootstrap (configs + logic registry), and starts the HTTP server.
+// Problab engine (configs + logic registry), and starts the HTTP server.
 //
 // The goal is to make `go run ./cmd/svr` (or `make svr`) work out-of-the-box
 // for new adopters, while keeping all Problab engine code inside the upstream
@@ -27,7 +27,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/zintix-labs/problab-scaffold/pkg/bootstrap"
+	"github.com/zintix-labs/problab-scaffold/pkg/engine"
 	"github.com/zintix-labs/problab/server"
 	"github.com/zintix-labs/problab/server/logger"
 	"github.com/zintix-labs/problab/server/svrcfg"
@@ -35,7 +35,7 @@ import (
 
 // main loads runtime configuration from flags and starts the Problab HTTP server.
 //
-// Any configuration/bootstrapping error is treated as fatal, because a partially
+// Any configuration/engineping error is treated as fatal, because a partially
 // initialized server is almost always the wrong behavior for an example scaffold.
 func main() {
 	cfg, err := loadConfigFromFlags()
@@ -87,10 +87,10 @@ func loadConfigFromFlags() (*svrcfg.SvrCfg, error) {
 	// Create an async logger with a small internal buffer. Most users should keep this as-is.
 	log := logger.NewDefaultAsyncLogger(cfg.normLog())
 
-	// Bootstrap wires configs (FS) + logic registry into a ready-to-run Problab instance.
+	// engine wires configs (FS) + logic registry into a ready-to-run Problab instance.
 	// This is the main value of the scaffold: users add YAML configs and logic builders,
 	// and the rest is assembled for them.
-	pb := bootstrap.MustNew()
+	pb := engine.MustNew()
 
 	// Assemble the server configuration used by `problab/server`.
 	sCfg := &svrcfg.SvrCfg{

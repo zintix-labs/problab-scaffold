@@ -12,24 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scfg
+package main
 
 import (
-	"github.com/zintix-labs/problab-scaffold/pkg/bootstrap"
-	"github.com/zintix-labs/problab/errs"
-	"github.com/zintix-labs/problab/server/logger"
-	"github.com/zintix-labs/problab/server/svrcfg"
+	"fmt"
+	"os"
 )
 
-func NewServerConfig() (*svrcfg.SvrCfg, error) {
-	lab, err := bootstrap.New()
-	if err != nil {
-		return nil, errs.NewFatal("new problab failed:" + err.Error())
+func main() {
+	exeCmd()
+}
+
+func exeCmd() {
+	// If no command is provided, print usage and exit.
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run scripts/ops.go [command]")
+		os.Exit(1)
 	}
-	scfg := &svrcfg.SvrCfg{
-		Log:         logger.NewDefaultAsyncLogger(logger.ModeDev),
-		SlotBufSize: 1,
-		Problab:     lab,
+
+	task := os.Args[1] // First argument (os.Args[0] is the executable itself)
+	selectTask(task)   // Dispatch task execution
+}
+
+func selectTask(task string) {
+	switch task {
+	case "test":
+		runTest()
+	case "test-all":
+		runTestAll()
+	case "test-detail":
+		runTestDetail()
+	default:
+		PrintYellow(fmt.Sprintf("Unknown task: %s\n", task))
+		os.Exit(1)
 	}
-	return scfg, nil
 }

@@ -23,7 +23,7 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/zintix-labs/problab-scaffold/pkg/bootstrap"
+	"github.com/zintix-labs/problab-scaffold/pkg/engine"
 	"github.com/zintix-labs/problab/spec"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -80,7 +80,7 @@ func bindVar() {
 func executeSimulator() {
 	cfg.valid()
 
-	lab := bootstrap.MustNew()
+	lab := engine.MustNew()
 
 	s, err := lab.NewSimulatorWithSeed(cfg.id, cfg.seed)
 	if err != nil {

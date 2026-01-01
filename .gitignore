@@ -36,11 +36,11 @@ coverprofile.out
 # ------------------------------
 # Project build outputs
 # ------------------------------
-# build 二進位輸出資料夾: 僅保留結構
+# build binary output directories: keep directory structure only
 build/bin/*
 build/profiling/*
 
-# 常見輸出資料夾（若有）
+# usually ignored
 dist/
 out/
 bin/
