@@ -117,7 +117,6 @@ build:
 
 ## go run:args (see help)
 run:
-	@printf "$(BLUE)cmd:$(RESET) go run ./cmd/run %s\n" "$(RUN_ARGS)"
 	@go run ./cmd/run $(RUN_ARGS)
 
 
