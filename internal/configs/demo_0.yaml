@@ -31,6 +31,12 @@ bet_units : [40]
 
 max_win_limit : 400000
 
+# optimal config
+optimal_setting:
+  use_optimal: false
+  gachas: [gacha_0.json.zst]
+  seed_bank: [seed_bank_0.bin]
+
 # Game mode settings. Each entry represents a state; the game transitions between states (e.g., BaseGame -> FreeGame).
 game_mode_settings:
   - # GameModeSettings[0] : BaseGame

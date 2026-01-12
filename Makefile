@@ -135,6 +135,10 @@ bin:
 dev:
 	@go run ./cmd/dev
 
+## Optimizer
+opt:
+	@go run ./cmd/opt -game $(GAME_E) -mode $(BETMODE_E)
+
 ## clean go cache & build
 clean: 
 	@printf "$(GREEN)Cleaning cache and build artifacts...$(RESET)\n"
@@ -269,6 +273,7 @@ help:
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "build" "Build standard binary to $(BINARY_PATH)"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "run" "Run simulation using 'go run'"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "dev" "Start Dev Web Panel"
+	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "opt" "Run optimizer (generate optimal gacha + seed bank)"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "svr" "Start HTTP server (use logmode/buf/svrmode)"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "bin" "Run compiled binary"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "clean" "Remove build artifacts and cache"

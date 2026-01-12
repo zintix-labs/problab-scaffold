@@ -35,6 +35,7 @@ import (
 	"github.com/zintix-labs/problab"
 	"github.com/zintix-labs/problab-scaffold/internal/configs"
 	"github.com/zintix-labs/problab-scaffold/internal/logic"
+	"github.com/zintix-labs/problab-scaffold/internal/optimal"
 	"github.com/zintix-labs/problab/sdk/core"
 	"github.com/zintix-labs/problab/sdk/slot"
 )
@@ -79,7 +80,12 @@ var (
 //
 //	pb, err := engine.New()
 func New() (*problab.Problab, error) {
-	pb, err := problab.NewAuto(pRNGFactory, cfgs, logics)
+	pb, err := problab.NewAuto(
+		pRNGFactory,
+		cfgs,
+		logics,
+		problab.WithOptimalFS(optimal.FS),
+	)
 	if err != nil {
 		return nil, err
 	}
