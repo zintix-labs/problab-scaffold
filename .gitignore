@@ -39,6 +39,7 @@ coverprofile.out
 # build binary output directories: keep directory structure only
 build/bin/*
 build/profiling/*
+build/optimizer/*
 
 # usually ignored
 dist/

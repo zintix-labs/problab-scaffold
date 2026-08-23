@@ -110,11 +110,58 @@ To create a new game, you only need two changes:
 
 That is all. You now have a **production-ready** new game. Development has never been this straightforward.
 
+## Optimal workflow (Problab v0.6.0)
+
+The scaffold uses the regular-file directory `internal/optimal` as its single
+Optimal root. Problab read-only mmaps finalized Artifact bundles from this
+directory on supported platforms. `make run`, `make dev`, `make svr`, and
+`make opt` all continue to construct the engine through `engine.New()`.
+
+For a new game such as `game_id: 1901`:
+
+1. Develop and collect with Optimal disabled:
+
+   ```yaml
+   optimal_setting:
+     use_optimal: false
+   ```
+
+2. Run the Optimizer for every bet mode:
+
+   ```bash
+   make opt game=1901 betmode=0
+   ```
+
+3. Review the generated bundle in `build/optimizer/game_1901/`.
+4. Copy the complete approved directory to `internal/optimal/game_1901/`.
+5. Enable the finalized result:
+
+   ```yaml
+   optimal_setting:
+     use_optimal: true
+     artifact: game_1901/manifest.json
+   ```
+
+The manifest resolves the probability, alias, and SeedBank files. Game configs
+do not list those paths separately. The historical exchange files are still
+written directly under `build/optimizer/` for existing external consumers.
+
+The Docker image copies `internal/optimal` to the same path under `/app`, so the
+local and container layouts are identical. A deployment may instead mount a
+finalized artifact directory read-only at `/app/internal/optimal`.
+
 ## Quick architecture notes
 
 - Configs are embedded from `internal/configs/`.
 - The config filesystem is **flat**: use `*.yaml` files in that folder (no subfolders).
 - Logic is registered via `init()` in `internal/logic/` to the global registry.
+- `pkg/engine/problab.go` owns one private `WithOptimalDir("internal/optimal")`
+  wiring point, so commands keep calling `engine.New()` unchanged.
+- Finalized Optimal bundles live under `internal/optimal/game_<gid>/` and are
+  regular files rather than embedded assets, allowing read-only mmap.
+- A single Problab instance loads/maps each referenced Artifact once and shares
+  it across every Machine, pool, and Simulator worker.
+- Application entrypoints close Problab on shutdown so mapped files are released.
 
 ## Commands
 
@@ -125,7 +172,8 @@ That is all. You now have a **production-ready** new game. Development has never
 
 ## Requirements
 
-- Go 1.25+ (see `go.mod`)  
+- Go 1.25+ (see `go.mod`)
+- Problab v0.6.0
 - `make` (optional but recommended)
 
 ## License

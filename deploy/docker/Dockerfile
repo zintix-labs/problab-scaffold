@@ -33,6 +33,7 @@ FROM gcr.io/distroless/static-debian12
 WORKDIR /app
 
 COPY --from=builder /app/problab-svr /app/problab-svr
+COPY --from=builder /app/internal/optimal /app/internal/optimal
 
 EXPOSE 5808
 ENTRYPOINT ["/app/problab-svr"]

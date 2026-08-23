@@ -81,6 +81,7 @@ func executeSimulator() {
 	cfg.valid()
 
 	lab := engine.MustNew()
+	defer func() { _ = lab.Close() }()
 
 	s, err := lab.NewSimulatorWithSeed(cfg.id, cfg.seed)
 	if err != nil {
@@ -96,21 +97,27 @@ func executeSimulator() {
 	if cfg.player == 1 { // sim machine
 		if cfg.worker == 1 {
 			// pure sim singo core
-			p.Printf("%s[GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s\n", green, cfg.name, cfg.betMode, cfg.spins, reset)
+			mustPrintf(p, "%s[GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s\n", green, cfg.name, cfg.betMode, cfg.spins, reset)
 			st, used, _ := s.Sim(cfg.betMode, cfg.spins, true)
 			st.StdOut(used)
 		} else {
 			// pure sim multi core
-			p.Printf("%s[WORKERS:%d] [GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s\n", green, cfg.worker, cfg.name, cfg.betMode, cfg.worker*cfg.spins, reset)
+			mustPrintf(p, "%s[WORKERS:%d] [GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s\n", green, cfg.worker, cfg.name, cfg.betMode, cfg.worker*cfg.spins, reset)
 			st, used, _ := s.SimMP(cfg.betMode, cfg.spins, cfg.worker, true) // 併發
 			st.StdOut(used)
 		}
 	} else {
 		// sim by player's experenece statemant
-		p.Printf("%s[WORKERS:%d] [GAME:%s] [PLAYERS:%d BALANCE:%d PLAYMODE:%d SPINS:%d]%s\n", green, cfg.worker, cfg.name, cfg.player, cfg.bets, cfg.betMode, cfg.spins, reset)
+		mustPrintf(p, "%s[WORKERS:%d] [GAME:%s] [PLAYERS:%d BALANCE:%d PLAYMODE:%d SPINS:%d]%s\n", green, cfg.worker, cfg.name, cfg.player, cfg.bets, cfg.betMode, cfg.spins, reset)
 		st, est, used, _ := s.SimPlayers(cfg.worker, cfg.player, cfg.bets, cfg.betMode, cfg.spins, true)
 		st.StdOut(used)
 		est.Out()
+	}
+}
+
+func mustPrintf(p *message.Printer, format string, args ...any) {
+	if _, err := p.Printf(format, args...); err != nil {
+		log.Fatal(err)
 	}
 }
 
@@ -126,7 +133,7 @@ func (cfg *config) valid() {
 	}
 	// resize players
 	if cfg.player > 100000 {
-		p.Printf("too much players: %d resized to 100k players\n", cfg.player)
+		mustPrintf(p, "too much players: %d resized to 100k players\n", cfg.player)
 		cfg.player = 100000
 	}
 
@@ -147,7 +154,7 @@ func (cfg *config) valid() {
 	// what can be reasonably modeled as a short-term player experience.
 	// For long-horizon behavior, machine-level simulation should be used instead.
 	if cfg.player > 1 && cfg.spins > 15000 {
-		p.Printf("too much spins for each players : %d resized to 15k spins for each player\n", cfg.spins)
+		mustPrintf(p, "too much spins for each players : %d resized to 15k spins for each player\n", cfg.spins)
 		cfg.spins = 15000
 	}
 }

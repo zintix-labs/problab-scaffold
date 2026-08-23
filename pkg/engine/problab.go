@@ -35,10 +35,11 @@ import (
 	"github.com/zintix-labs/problab"
 	"github.com/zintix-labs/problab-scaffold/internal/configs"
 	"github.com/zintix-labs/problab-scaffold/internal/logic"
-	"github.com/zintix-labs/problab-scaffold/internal/optimal"
 	"github.com/zintix-labs/problab/sdk/core"
 	"github.com/zintix-labs/problab/sdk/slot"
 )
+
+const optimalDir = "internal/optimal"
 
 // NOTE: This scaffold intentionally does NOT expose runtime dependency injection
 // (no Options, setters, env/flag-driven wiring, or external overrides).
@@ -71,6 +72,10 @@ var (
 	// Logic registry: register your game logic builders/handlers.
 	// You can merge multiple registries, but a single registry is easiest to reason about.
 	logics []*slot.LogicRegistry = problab.Logics(logic.Logics)
+	// Optimal Artifacts are regular files rather than embedded assets so Problab
+	// can read-only mmap them. All application entrypoints still call engine.New()
+	// and share this single project-owned source root.
+	optimalOption problab.ProblabOption = problab.WithOptimalDir(optimalDir)
 )
 
 // New constructs a Problab instance using the scaffold's embedded configs and logic registry.
@@ -84,7 +89,7 @@ func New() (*problab.Problab, error) {
 		pRNGFactory,
 		cfgs,
 		logics,
-		problab.WithOptimalFS(optimal.FS),
+		optimalOption,
 	)
 	if err != nil {
 		return nil, err

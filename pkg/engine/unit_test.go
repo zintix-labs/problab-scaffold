@@ -16,8 +16,10 @@ package engine
 
 import (
 	"io/fs"
+	"path/filepath"
 	"testing"
 
+	"github.com/zintix-labs/problab"
 	"github.com/zintix-labs/problab/catalog"
 	"github.com/zintix-labs/problab/spec"
 )
@@ -50,13 +52,7 @@ func TestLogicRegistry(t *testing.T) {
 }
 
 func TestNewAndSummary(t *testing.T) {
-	lab, err := New()
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
-	}
-	if lab == nil {
-		t.Fatal("New() returned nil")
-	}
+	lab := newTestLab(t)
 
 	ent0, ok := lab.EntryById(spec.GID(0))
 	if !ok {
@@ -94,10 +90,7 @@ func TestNewAndSummary(t *testing.T) {
 }
 
 func TestNewMachine(t *testing.T) {
-	lab, err := New()
-	if err != nil {
-		t.Fatalf("New() error: %v", err)
-	}
+	lab := newTestLab(t)
 
 	for _, id := range []spec.GID{0, 1} {
 		m, err := lab.NewMachine(id, true)
@@ -106,6 +99,9 @@ func TestNewMachine(t *testing.T) {
 		}
 		if m == nil {
 			t.Fatalf("NewMachine(%d) returned nil", id)
+		}
+		if result := m.SpinInternal(0); result == nil {
+			t.Fatalf("NewMachine(%d) returned nil Spin result", id)
 		}
 	}
 }
@@ -161,4 +157,25 @@ func configExists(name string) bool {
 		}
 	}
 	return false
+}
+
+func newTestLab(t *testing.T) *problab.Problab {
+	t.Helper()
+	originalOption := optimalOption
+	optimalOption = problab.WithOptimalDir(filepath.Join("..", "..", optimalDir))
+	t.Cleanup(func() { optimalOption = originalOption })
+
+	lab, err := New()
+	if err != nil {
+		t.Fatalf("New() error: %v", err)
+	}
+	if lab == nil {
+		t.Fatal("New() returned nil")
+	}
+	t.Cleanup(func() {
+		if err := lab.Close(); err != nil {
+			t.Errorf("Problab.Close() error: %v", err)
+		}
+	})
+	return lab
 }

@@ -127,6 +127,47 @@ git init
 
 ---
 
+## Optimal 工作流程（Problab v0.6.0）
+
+Scaffold 将普通文件目录 `internal/optimal` 作为唯一的 Optimal 结果库根目录。
+在支持的平台上，Problab 会对其中确认完成的 Artifact 进行只读 mmap。
+`make run`、`make dev`、`make svr` 与 `make opt` 仍统一通过 `engine.New()`
+建立引擎，不需要分别修改命令入口。
+
+以 `game_id: 1901` 为例：
+
+1. 开发与收集阶段关闭 Optimal：
+
+   ```yaml
+   optimal_setting:
+     use_optimal: false
+   ```
+
+2. 为每个 BetMode 执行 Optimizer：
+
+   ```bash
+   make opt game=1901 betmode=0
+   ```
+
+3. 在 `build/optimizer/game_1901/` 检查生成结果。
+4. 将确认完成的整个目录复制到 `internal/optimal/game_1901/`。
+5. 开启最终结果：
+
+   ```yaml
+   optimal_setting:
+     use_optimal: true
+     artifact: game_1901/manifest.json
+   ```
+
+Manifest 会自动解析 probability、aliases 与 SeedBank，游戏配置不需要分别填写
+这些文件路径。原始公共交换格式仍会输出在 `build/optimizer/` 根目录，既有外部
+使用者不需要修改解析方式。
+
+Docker image 会将 `internal/optimal` 复制到 `/app/internal/optimal`，让本地与
+容器使用相同目录结构。正式部署也可以将确认后的结果库以只读方式挂载到该位置。
+
+---
+
 ## 架构说明
 
 - 配置文件通过 `internal/configs/` 进行 embed
@@ -134,6 +175,13 @@ git init
   - 仅支持目录内的 `*.yaml`
   - 不支持子目录
 - 游戏逻辑通过 `internal/logic/` 中的 `init()` 自动注册
+- `pkg/engine/problab.go` 只有一个私有的
+  `WithOptimalDir("internal/optimal")` 接线点；各命令仍只调用 `engine.New()`。
+- 确认后的 Optimal 存放于 `internal/optimal/game_<gid>/`，使用普通文件而非
+  embed，使运行时可以只读 mmap。
+- 同一个 Problab 对每份 Artifact 只加载／映射一次，并由全部 Machine、Pool
+  与 Simulator worker 共享。
+- 各命令会在结束时关闭 Problab，正确释放 mmap。
 
 这些限制是**刻意设计的约束**，  
 用于保持系统行为可预测、结构清晰、易于维护。
@@ -152,6 +200,7 @@ git init
 ## 环境要求
 
 - Go 1.25 或以上
+- Problab v0.6.0
 - `make`（非必须，但推荐）
 
 ---

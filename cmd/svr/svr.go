@@ -43,6 +43,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	defer func() { _ = cfg.Problab.Close() }()
 	server.Run(cfg)
 }
 

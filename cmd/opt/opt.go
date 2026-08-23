@@ -36,6 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() { _ = lab.Close() }()
 	tuner, err := optimizer.New(OptCfg, "opt_cfg.yaml")
 	if err != nil {
 		log.Fatal(err)
