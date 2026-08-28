@@ -110,14 +110,34 @@ To create a new game, you only need two changes:
 
 That is all. You now have a **production-ready** new game. Development has never been this straightforward.
 
-## Optimal workflow (Problab v0.6.0)
+## Optimal workflow (Problab v0.7.0)
 
 The scaffold uses the regular-file directory `internal/optimal` as its single
 Optimal root. Problab read-only mmaps finalized Artifact bundles from this
 directory on supported platforms. `make run`, `make dev`, `make svr`, and
-`make opt` all continue to construct the engine through `engine.New()`.
+`make opt` all construct the engine through `engine.New()`.
 
-For a new game such as `game_id: 1901`:
+### The optimizer is configured, not invoked with flags
+
+`cmd/opt` is the Problab v0.7.0 **LP / math-intent optimizer (v2)**. It takes
+**no command-line arguments** — `make opt` runs it as-is and it rejects any
+flag. Every run is defined by the embedded file `cmd/opt/opt_cfg.yaml`
+(`//go:embed`), which is the single auditable source for a run. Changing a run
+means editing that file and rebuilding.
+
+`opt_cfg.yaml` has three sections with deliberately separated ownership:
+
+| Section | Owner | Contents |
+| --- | --- | --- |
+| `plans:` | Engineering | Routing and execution: target `game` + `bet_modes`, `seed`, collection `workers` / `batch_size` / `max_spins`, output `format` and `directory`. Plans run in declaration order; use one plan per bet mode, or list several in `bet_modes`. |
+| `intents:` | Designer | The math contract: class weights, inclusive `win_range`, collection `tags`, exact `exp` and `median`, bucketed `main_experience` groups with a soft `prefer` profile, overall `cv` bounds, optional collision `risk` policy. |
+| `engine_options:` | Engineering | Numerical controls only: feasibility / optimality / quantile tolerances and bisection iteration budgets. Never relaxed automatically after an infeasible result. |
+
+Collection tags referenced by `intents[].collect.tags` are owned by the scaffold
+in `internal/logic/optimizer_tags/`. `GameTags` binds each `spec.GID` to its tag
+predicate set; add one file per game and register it there.
+
+### Steps for a new game such as `game_id: 1901`
 
 1. Develop and collect with Optimal disabled:
 
@@ -126,15 +146,27 @@ For a new game such as `game_id: 1901`:
      use_optimal: false
    ```
 
-2. Run the Optimizer for every bet mode:
+2. Register the game's collection tags in `internal/logic/optimizer_tags/`
+   (copy `demo_0_tags.go`, add the new `spec.GID` to `GameTags`).
+
+3. Add a plan per bet mode in `cmd/opt/opt_cfg.yaml` (set `target.game: 1901`,
+   `target.bet_modes`, `intent`, `seed`, collection budget), then run:
 
    ```bash
-   make opt game=1901 betmode=0
+   make opt
    ```
 
-3. Review the generated bundle in `build/optimizer/game_1901/`.
-4. Copy the complete approved directory to `internal/optimal/game_1901/`.
-5. Enable the finalized result:
+4. Review the generated bundle in `build/optimizer/artifact_v1/game_1901/`; the
+   legacy gacha exchange files are written under
+   `build/optimizer/gacha/game_1901/`, and a per-mode distribution CSV is
+   written next to the output. Incomplete runs stay in a `.pending` staging
+   directory and are invisible to the runtime until all bet modes are present
+   and published atomically.
+
+5. Copy the complete approved `artifact_v1/game_1901/` directory to
+   `internal/optimal/game_1901/`.
+
+6. Enable the finalized result:
 
    ```yaml
    optimal_setting:
@@ -143,8 +175,7 @@ For a new game such as `game_id: 1901`:
    ```
 
 The manifest resolves the probability, alias, and SeedBank files. Game configs
-do not list those paths separately. The historical exchange files are still
-written directly under `build/optimizer/` for existing external consumers.
+do not list those paths separately.
 
 The Docker image copies `internal/optimal` to the same path under `/app`, so the
 local and container layouts are identical. A deployment may instead mount a
@@ -159,6 +190,10 @@ finalized artifact directory read-only at `/app/internal/optimal`.
   wiring point, so commands keep calling `engine.New()` unchanged.
 - Finalized Optimal bundles live under `internal/optimal/game_<gid>/` and are
   regular files rather than embedded assets, allowing read-only mmap.
+- Optimizer runs are defined only by the embedded `cmd/opt/opt_cfg.yaml`; the
+  binary takes no flags. Collection tags live in
+  `internal/logic/optimizer_tags/`, where `GameTags` maps each `spec.GID` to its
+  tag predicates.
 - A single Problab instance loads/maps each referenced Artifact once and shares
   it across every Machine, pool, and Simulator worker.
 - Application entrypoints close Problab on shutdown so mapped files are released.
@@ -173,7 +208,7 @@ finalized artifact directory read-only at `/app/internal/optimal`.
 ## Requirements
 
 - Go 1.25+ (see `go.mod`)
-- Problab v0.6.0
+- Problab v0.7.0
 - `make` (optional but recommended)
 
 ## License
