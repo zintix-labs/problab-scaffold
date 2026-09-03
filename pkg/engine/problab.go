@@ -73,8 +73,8 @@ var (
 	// You can merge multiple registries, but a single registry is easiest to reason about.
 	logics []*slot.LogicRegistry = problab.Logics(logic.Logics)
 	// Optimal Artifacts are regular files rather than embedded assets so Problab
-	// can read-only mmap them. All application entrypoints still call engine.New()
-	// and share this single project-owned source root.
+	// can read-only mmap them. Runtime entrypoints call engine.New() and share
+	// this single project-owned source root.
 	optimalOption problab.ProblabOption = problab.WithOptimalDir(optimalDir)
 )
 
@@ -105,4 +105,26 @@ func MustNew() *problab.Problab {
 		panic(err)
 	}
 	return pb
+}
+
+// NewForOptimizer constructs the project-owned Lab used for raw optimizer
+// collection. It shares the runtime PRNG factory, configs, and logic registry,
+// but deliberately does not mount or preload an already-published Artifact.
+func NewForOptimizer() (*problab.Problab, error) {
+	pb, err := problab.New(
+		pRNGFactory,
+		cfgs,
+		logics,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := pb.RegisterAll(); err != nil {
+		_ = pb.Close()
+		return nil, err
+	}
+
+	pb.Freeze()
+	return pb, nil
 }

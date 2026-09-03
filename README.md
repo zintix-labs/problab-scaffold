@@ -110,16 +110,27 @@ To create a new game, you only need two changes:
 
 That is all. You now have a **production-ready** new game. Development has never been this straightforward.
 
-## Optimal workflow (Problab v0.7.0)
+## Optimal workflow (Problab v0.8.0)
 
 The scaffold uses the regular-file directory `internal/optimal` as its single
-Optimal root. Problab read-only mmaps finalized Artifact bundles from this
-directory on supported platforms. `make run`, `make dev`, `make svr`, and
-`make opt` all construct the engine through `engine.New()`.
+Optimal root. Runtime entrypoints (`make run`, `make dev`, and `make svr`) call
+`engine.New()` and may read finalized bundles from this root. `make opt` calls
+`engine.NewForOptimizer()` instead: it uses the same project-owned PRNG factory,
+embedded configs, and logic registry, but deliberately does not preload a
+published bundle while collecting raw game results.
+
+Problab v0.8.0 supports two mutually exclusive runtime formats:
+
+- **Artifact v1 (recommended):** a manifest plus binary probability, alias, and
+  Seed Bank files. The manifest records file hashes and the PRNG snapshot
+  format.
+- **Legacy gacha:** one `gacha_<mode>.json.zst` and one
+  `seed_bank_<mode>.bin` for every bet mode. This remains supported for existing
+  integrations.
 
 ### The optimizer is configured, not invoked with flags
 
-`cmd/opt` is the Problab v0.7.0 **LP / math-intent optimizer (v2)**. It takes
+`cmd/opt` is the Problab v0.8.0 **LP / math-intent optimizer (v2)**. It takes
 **no command-line arguments** — `make opt` runs it as-is and it rejects any
 flag. Every run is defined by the embedded file `cmd/opt/opt_cfg.yaml`
 (`//go:embed`), which is the single auditable source for a run. Changing a run
@@ -156,40 +167,124 @@ predicate set; add one file per game and register it there.
    make opt
    ```
 
-4. Review the generated bundle in `build/optimizer/artifact_v1/game_1901/`; the
-   legacy gacha exchange files are written under
-   `build/optimizer/gacha/game_1901/`, and a per-mode distribution CSV is
-   written next to the output. Incomplete runs stay in a `.pending` staging
-   directory and are invisible to the runtime until all bet modes are present
-   and published atomically.
+4. Review the generated output:
 
-5. Copy the complete approved `artifact_v1/game_1901/` directory to
-   `internal/optimal/game_1901/`.
-
-6. Enable the finalized result:
-
-   ```yaml
-   optimal_setting:
-     use_optimal: true
-     artifact: game_1901/manifest.json
+   ```text
+   build/optimizer/
+   |-- artifact_v1/game_1901/
+   |-- gacha/game_1901/
+   `-- distribution_mode_<mode>.csv
    ```
+
+   Incomplete runs stay in a `.pending` staging directory and are invisible to
+   runtime consumers until all bet modes are present and published atomically.
+
+5. Publish either Artifact v1 or legacy gacha by following one of the sections
+   below. Do not configure both formats for the same game.
+
+### Recommended: publish Artifact v1
+
+Copy the complete approved directory without selecting individual files:
+
+```text
+build/optimizer/artifact_v1/game_1901/
+    -> internal/optimal/artifact_v1/game_1901/
+```
+
+The installed directory contains one manifest and the files for every bet mode:
+
+```text
+internal/optimal/artifact_v1/game_1901/
+|-- manifest.json
+|-- mode_0.json
+|-- prob_0.bin
+|-- aliases_0.bin
+|-- seed_bank_0.bin
+`-- ... files for additional bet modes
+```
+
+Enable the finalized result in the game config:
+
+```yaml
+optimal_setting:
+  use_optimal: true
+  artifact: artifact_v1/game_1901/manifest.json
+```
 
 The manifest resolves the probability, alias, and SeedBank files. Game configs
 do not list those paths separately.
 
-The Docker image copies `internal/optimal` to the same path under `/app`, so the
-local and container layouts are identical. A deployment may instead mount a
-finalized artifact directory read-only at `/app/internal/optimal`.
+### Existing integrations: publish legacy gacha
+
+Legacy users may continue using the `.json.zst` plus Seed Bank layout. Copy the
+complete approved legacy directory:
+
+```text
+build/optimizer/gacha/game_1901/
+    -> internal/optimal/gacha/game_1901/
+```
+
+For one bet mode the installed files are:
+
+```text
+internal/optimal/gacha/game_1901/
+|-- gacha_0.json.zst
+`-- seed_bank_0.bin
+```
+
+Reference both files explicitly:
+
+```yaml
+optimal_setting:
+  use_optimal: true
+  gachas:
+    - gacha/game_1901/gacha_0.json.zst
+  seed_bank:
+    - gacha/game_1901/seed_bank_0.bin
+```
+
+For multiple bet modes, add one path to each list in bet-mode order. Both lists
+must have the same length as `bet_units`: index `0` maps to `bet_units[0]`, index
+`1` maps to `bet_units[1]`, and so on. Do not set `artifact` when `gachas` and
+`seed_bank` are configured.
+
+### PRNG and snapshot compatibility
+
+An Optimal Seed Bank stores serialized PRNG snapshots. The optimizer and
+runtime must therefore use compatible PRNG implementations and snapshot sizes.
+The v0.8.0 default is ChaCha20. Existing PCG64 bundles can continue to run only
+when the project explicitly injects the compatible PCG64 factory; changing the
+directory or YAML path does not convert a PCG64 bundle into a ChaCha20 bundle.
+Regenerate either output format after changing PRNG implementation.
+
+### Private artifacts and deployment
+
+`internal/optimal/artifact_v1/**` and `internal/optimal/gacha/**` are ignored by
+Git by default. Optimal outputs can contain proprietary math data, and Seed Bank
+files can be too large for ordinary Git hosting. The recommended production
+flow is to store approved bundles in a private artifact service and copy or
+read-only mount the selected bundle into `internal/optimal` during deployment.
+
+If your organization intentionally versions bundles in a private repository,
+remove the corresponding `internal/optimal` rule from `.gitignore` and use Git
+LFS or another large-file storage system. Private GitHub repositories retain the
+normal per-file size limit. Legacy `.zst` files are also covered by the global
+`*.zst` ignore rule, so that rule must be removed or overridden before tracking
+legacy output. Never commit proprietary Optimal data to a public repository.
 
 ## Quick architecture notes
 
 - Configs are embedded from `internal/configs/`.
 - The config filesystem is **flat**: use `*.yaml` files in that folder (no subfolders).
 - Logic is registered via `init()` in `internal/logic/` to the global registry.
-- `pkg/engine/problab.go` owns one private `WithOptimalDir("internal/optimal")`
-  wiring point, so commands keep calling `engine.New()` unchanged.
-- Finalized Optimal bundles live under `internal/optimal/game_<gid>/` and are
-  regular files rather than embedded assets, allowing read-only mmap.
+- `pkg/engine/problab.go` owns the shared PRNG, config, and logic wiring.
+  Runtime commands call `engine.New()`; `make opt` calls
+  `engine.NewForOptimizer()` to collect without a published Artifact.
+- Finalized Artifact v1 bundles live under
+  `internal/optimal/artifact_v1/game_<gid>/`; legacy bundles live under
+  `internal/optimal/gacha/game_<gid>/`.
+- Artifact files are regular files rather than embedded assets, allowing
+  read-only mmap for Artifact v1 on supported platforms.
 - Optimizer runs are defined only by the embedded `cmd/opt/opt_cfg.yaml`; the
   binary takes no flags. Collection tags live in
   `internal/logic/optimizer_tags/`, where `GameTags` maps each `spec.GID` to its
@@ -208,7 +303,7 @@ finalized artifact directory read-only at `/app/internal/optimal`.
 ## Requirements
 
 - Go 1.25+ (see `go.mod`)
-- Problab v0.7.0
+- Problab v0.8.0
 - `make` (optional but recommended)
 
 ## License

@@ -33,8 +33,17 @@ max_win_limit : 400000
 
 # optimal config
 optimal_setting:
-  use_optimal: true
-  artifact: game_0/manifest.json
+  use_optimal: false
+
+  # Recommended: Artifact v1. Set use_optimal to true before enabling it.
+  # artifact: artifact_v1/game_0/manifest.json
+
+  # Legacy format; mutually exclusive with artifact.
+  # Set use_optimal to true before enabling these paths.
+  # gachas:
+  #   - gacha/game_0/gacha_0.json.zst
+  # seed_bank:
+  #   - gacha/game_0/seed_bank_0.bin
 
 # Game mode settings. Each entry represents a state; the game transitions between states (e.g., BaseGame -> FreeGame).
 game_mode_settings:

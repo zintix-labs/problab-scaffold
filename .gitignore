@@ -6,6 +6,9 @@
 # project ignore here
 # ------------------------------
 
+# Generated Optimal artifacts are local/private by default.
+/internal/optimal/artifact_v1/**
+/internal/optimal/gacha/**
 
 # ==============================================================
 # General ignore

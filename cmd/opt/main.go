@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/zintix-labs/problab-scaffold/internal/logic/optimizer_tags"
-	"github.com/zintix-labs/problab/demo"
+	"github.com/zintix-labs/problab-scaffold/pkg/engine"
 	optimizerv2 "github.com/zintix-labs/problab/optimizer/v2"
 )
 
@@ -91,9 +91,9 @@ func runV2(arguments []string, _ io.Writer, stderr io.Writer) (int, error) {
 		return 2, nil
 	}
 	reporter.Report(optimizerv2.StageEvent{Stage: "load-config", State: "completed", BetMode: -1, Duration: time.Since(configStarted)})
-	lab, err := demo.NewProbLab()
+	lab, err := engine.NewForOptimizer()
 	if err != nil {
-		return 1, fmt.Errorf("construct demo Problab: %w", err)
+		return 1, fmt.Errorf("construct optimizer Problab: %w", err)
 	}
 	defer func() { _ = lab.Close() }()
 	tuner, err := optimizerv2.NewTuner(config, lab,
