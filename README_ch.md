@@ -127,16 +127,24 @@ git init
 
 ---
 
-## Optimal 工作流程（Problab v0.7.0）
+## Optimal 工作流程（Problab v0.8.0）
 
 Scaffold 将普通文件目录 `internal/optimal` 作为唯一的 Optimal 结果库根目录。
-在支持的平台上，Problab 会对其中确认完成的 Artifact 进行只读 mmap。
-`make run`、`make dev`、`make svr` 与 `make opt` 仍统一通过 `engine.New()`
-建立引擎，不需要分别修改命令入口。
+运行时入口（`make run`、`make dev` 与 `make svr`）调用 `engine.New()`，并可从该
+目录读取已发布的 bundle。`make opt` 则调用 `engine.NewForOptimizer()`：它使用同一套
+由项目注入的 PRNG Factory、embed 配置与 Logic Registry，但在收集原始游戏结果时
+不会预加载已经发布的 bundle。
+
+Problab v0.8.0 支持两种互斥的运行时格式：
+
+- **Artifact v1（推荐）：**由 manifest、二进制 probability、alias 与 Seed Bank
+  文件组成。Manifest 会记录文件哈希与 PRNG snapshot 格式。
+- **Legacy gacha：**每个 BetMode 各有一个 `gacha_<mode>.json.zst` 与一个
+  `seed_bank_<mode>.bin`。既有集成仍可继续使用这种格式。
 
 ### Optimizer 由配置文件驱动，不再使用命令行参数
 
-`cmd/opt` 是 Problab v0.7.0 的 **LP / 数学意图 Optimizer（v2）**。它**不接受任何
+`cmd/opt` 是 Problab v0.8.0 的 **LP / 数学意图 Optimizer（v2）**。它**不接受任何
 命令行参数**——`make opt` 直接运行，传入 flag 会被拒绝。每一次运行都由 embed 进
 二进制的 `cmd/opt/opt_cfg.yaml`（`//go:embed`）唯一定义，这是运行的唯一可审计
 来源。要改变运行行为，就编辑该文件并重新编译。
@@ -173,27 +181,106 @@ tag 判定函数集合；每个游戏新增一个文件并在此注册。
    make opt
    ```
 
-4. 在 `build/optimizer/artifact_v1/game_1901/` 检查生成的 Artifact bundle；
-   旧版 gacha 交换格式写在 `build/optimizer/gacha/game_1901/`，每个 mode 的分布
-   CSV 会写在输出旁边。未完成的运行保留在 `.pending` 暂存目录中，对运行时不可见，
-   直到所有 BetMode 齐全并原子发布。
+4. 检查生成结果：
 
-5. 将确认完成的整个 `artifact_v1/game_1901/` 目录复制到
-   `internal/optimal/game_1901/`。
-
-6. 开启最终结果：
-
-   ```yaml
-   optimal_setting:
-     use_optimal: true
-     artifact: game_1901/manifest.json
+   ```text
+   build/optimizer/
+   |-- artifact_v1/game_1901/
+   |-- gacha/game_1901/
+   `-- distribution_mode_<mode>.csv
    ```
+
+   未完成的运行会保留在 `.pending` 暂存目录中。在所有 BetMode 齐全并完成原子发布
+   之前，运行时不会看到这些暂存结果。
+
+5. 按照下方其中一种方式发布 Artifact v1 或 legacy gacha。同一游戏不可同时配置
+   两种格式。
+
+### 推荐方式：发布 Artifact v1
+
+复制整个审核通过的目录，不要只挑选部分文件：
+
+```text
+build/optimizer/artifact_v1/game_1901/
+    -> internal/optimal/artifact_v1/game_1901/
+```
+
+安装后的目录包含一个 manifest，以及所有 BetMode 对应的文件：
+
+```text
+internal/optimal/artifact_v1/game_1901/
+|-- manifest.json
+|-- mode_0.json
+|-- prob_0.bin
+|-- aliases_0.bin
+|-- seed_bank_0.bin
+`-- ... 其他 BetMode 的文件
+```
+
+在游戏配置中启用最终结果：
+
+```yaml
+optimal_setting:
+  use_optimal: true
+  artifact: artifact_v1/game_1901/manifest.json
+```
 
 Manifest 会自动解析 probability、aliases 与 SeedBank，游戏配置不需要分别填写
 这些文件路径。
 
-Docker image 会将 `internal/optimal` 复制到 `/app/internal/optimal`，让本地与
-容器使用相同目录结构。正式部署也可以将确认后的结果库以只读方式挂载到该位置。
+### 既有集成：继续发布 legacy gacha
+
+既有用户可以继续使用 `.json.zst` 加 Seed Bank 的目录格式。复制整个审核通过的
+legacy 目录：
+
+```text
+build/optimizer/gacha/game_1901/
+    -> internal/optimal/gacha/game_1901/
+```
+
+只有一个 BetMode 时，安装后的文件如下：
+
+```text
+internal/optimal/gacha/game_1901/
+|-- gacha_0.json.zst
+`-- seed_bank_0.bin
+```
+
+在配置中明确引用两个文件：
+
+```yaml
+optimal_setting:
+  use_optimal: true
+  gachas:
+    - gacha/game_1901/gacha_0.json.zst
+  seed_bank:
+    - gacha/game_1901/seed_bank_0.bin
+```
+
+如果有多个 BetMode，请按照 BetMode 顺序分别在两个列表中加入路径。两个列表的长度
+都必须与 `bet_units` 相同：index `0` 对应 `bet_units[0]`，index `1` 对应
+`bet_units[1]`，以此类推。配置 `gachas` 与 `seed_bank` 时，不可同时设置
+`artifact`。
+
+### PRNG 与 snapshot 相容性
+
+Optimal Seed Bank 保存的是序列化后的 PRNG snapshot，因此 Optimizer 与运行时必须
+使用相容的 PRNG 实现与 snapshot 长度。v0.8.0 默认使用 ChaCha20。既有 PCG64
+bundle 只有在项目明确注入相容的 PCG64 Factory 时才能继续运行；修改目录或 YAML
+路径不会把 PCG64 bundle 转换为 ChaCha20 bundle。更换 PRNG 实现后，无论使用
+Artifact v1 或 legacy gacha，都必须重新生成输出。
+
+### 私有 Artifact 与部署
+
+Git 默认忽略 `internal/optimal/artifact_v1/**` 与
+`internal/optimal/gacha/**`。Optimal 输出可能包含具有商业价值的数学数据，而 Seed
+Bank 也可能大到不适合普通 Git 托管。正式环境建议将审核通过的 bundle 存放在私有
+Artifact 服务，并在部署时复制到 `internal/optimal`，或以只读方式挂载到该目录。
+
+如果组织明确要在私有仓库中管理 bundle，请从 `.gitignore` 移除对应的
+`internal/optimal` 规则，并使用 Git LFS 或其他大文件存储方案。GitHub 私有仓库仍有
+一般的单文件大小限制。Legacy `.zst` 还会被全局 `*.zst` 规则忽略；要追踪 legacy
+输出，也必须移除或覆盖该规则。切勿将具有商业价值的 Optimal 数据提交到公开仓库。
 
 ---
 
@@ -204,10 +291,13 @@ Docker image 会将 `internal/optimal` 复制到 `/app/internal/optimal`，让�
   - 仅支持目录内的 `*.yaml`
   - 不支持子目录
 - 游戏逻辑通过 `internal/logic/` 中的 `init()` 自动注册
-- `pkg/engine/problab.go` 只有一个私有的
-  `WithOptimalDir("internal/optimal")` 接线点；各命令仍只调用 `engine.New()`。
-- 确认后的 Optimal 存放于 `internal/optimal/game_<gid>/`，使用普通文件而非
-  embed，使运行时可以只读 mmap。
+- `pkg/engine/problab.go` 拥有共用的 PRNG、Config 与 Logic 接线。运行时命令调用
+  `engine.New()`；`make opt` 调用 `engine.NewForOptimizer()`，在不加载已发布 Artifact
+  的情况下完成收集。
+- 最终 Artifact v1 bundle 存放在
+  `internal/optimal/artifact_v1/game_<gid>/`；legacy bundle 存放在
+  `internal/optimal/gacha/game_<gid>/`。
+- Artifact 使用普通文件而非 embed，使 Artifact v1 在支持的平台上可以只读 mmap。
 - Optimizer 运行只由 embed 的 `cmd/opt/opt_cfg.yaml` 定义，二进制不接受任何
   flag。收集 tag 位于 `internal/logic/optimizer_tags/`，`GameTags` 将每个
   `spec.GID` 映射到其 tag 判定函数。
@@ -232,7 +322,7 @@ Docker image 会将 `internal/optimal` 复制到 `/app/internal/optimal`，让�
 ## 环境要求
 
 - Go 1.25 或以上
-- Problab v0.7.0
+- Problab v0.8.0
 - `make`（非必须，但推荐）
 
 ---
