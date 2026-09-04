@@ -1,3 +1,5 @@
+//go:build !poc
+
 // Copyright 2025 Zintix Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,18 +14,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package optimizer_tags
+package main
 
-import (
-	"github.com/zintix-labs/problab/optimizer"
-	"github.com/zintix-labs/problab/sdk/buf"
-)
+import "embed"
 
-var Demo_0_Tags = map[string]optimizer.IsTag{
-	"demo_0_tag_1": Demo_0_IsMatchClass01,
-}
-
-// Demo_0_IsMatchClass01
-func Demo_0_IsMatchClass01(sr *buf.SpinResult) bool {
-	return true
-}
+// optConfig contains only the production v2 RunPlan. The historical
+// nine-case formulation POC remains available with `-tags poc` and therefore
+// cannot be mistaken for the command's runtime optimizer configuration.
+//
+//go:embed opt_cfg.yaml
+var optConfig embed.FS

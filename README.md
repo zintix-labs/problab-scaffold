@@ -145,7 +145,7 @@ means editing that file and rebuilding.
 | `engine_options:` | Engineering | Numerical controls only: feasibility / optimality / quantile tolerances and bisection iteration budgets. Never relaxed automatically after an infeasible result. |
 
 Collection tags referenced by `intents[].collect.tags` are owned by the scaffold
-in `internal/logic/optimizer_tags/`. `GameTags` binds each `spec.GID` to its tag
+in `internal/logic/game_tags/`. `GameTags` binds each `spec.GID` to its tag
 predicate set; add one file per game and register it there.
 
 ### Steps for a new game such as `game_id: 1901`
@@ -157,7 +157,7 @@ predicate set; add one file per game and register it there.
      use_optimal: false
    ```
 
-2. Register the game's collection tags in `internal/logic/optimizer_tags/`
+2. Register the game's collection tags in `internal/logic/game_tags/`
    (copy `demo_0_tags.go`, add the new `spec.GID` to `GameTags`).
 
 3. Add a plan per bet mode in `cmd/opt/opt_cfg.yaml` (set `target.game: 1901`,
@@ -287,7 +287,7 @@ legacy output. Never commit proprietary Optimal data to a public repository.
   read-only mmap for Artifact v1 on supported platforms.
 - Optimizer runs are defined only by the embedded `cmd/opt/opt_cfg.yaml`; the
   binary takes no flags. Collection tags live in
-  `internal/logic/optimizer_tags/`, where `GameTags` maps each `spec.GID` to its
+  `internal/logic/game_tags/`, where `GameTags` maps each `spec.GID` to its
   tag predicates.
 - A single Problab instance loads/maps each referenced Artifact once and shares
   it across every Machine, pool, and Simulator worker.

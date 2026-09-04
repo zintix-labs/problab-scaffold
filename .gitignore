@@ -7,8 +7,11 @@
 # ------------------------------
 
 # Generated Optimal artifacts are local/private by default.
-/internal/optimal/artifact_v1/**
-/internal/optimal/gacha/**
+/internal/optimal/artifact_v1/**/*.json
+/internal/optimal/artifact_v1/**/*.bin
+/internal/optimal/gacha/**/*.json
+/internal/optimal/gacha/**/*.zst
+/internal/optimal/gacha/**/*.bin
 
 # ==============================================================
 # General ignore

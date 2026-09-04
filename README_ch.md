@@ -158,7 +158,7 @@ Problab v0.8.0 支持两种互斥的运行时格式：
 | `engine_options:` | 工程 | 仅数值控制：feasibility / optimality / quantile 容差与 bisection 迭代预算。infeasible 时不会自动放宽。 |
 
 `intents[].collect.tags` 引用的收集 tag 由 Scaffold 在
-`internal/logic/optimizer_tags/` 中拥有。`GameTags` 将每个 `spec.GID` 绑定到其
+`internal/logic/game_tags/` 中拥有。`GameTags` 将每个 `spec.GID` 绑定到其
 tag 判定函数集合；每个游戏新增一个文件并在此注册。
 
 ### 以 `game_id: 1901` 为例
@@ -170,7 +170,7 @@ tag 判定函数集合；每个游戏新增一个文件并在此注册。
      use_optimal: false
    ```
 
-2. 在 `internal/logic/optimizer_tags/` 中注册该游戏的收集 tag
+2. 在 `internal/logic/game_tags/` 中注册该游戏的收集 tag
    （复制 `demo_0_tags.go`，把新的 `spec.GID` 加入 `GameTags`）。
 
 3. 在 `cmd/opt/opt_cfg.yaml` 中为每个 BetMode 添加一个 plan
@@ -299,7 +299,7 @@ Artifact 服务，并在部署时复制到 `internal/optimal`，或以只读方�
   `internal/optimal/gacha/game_<gid>/`。
 - Artifact 使用普通文件而非 embed，使 Artifact v1 在支持的平台上可以只读 mmap。
 - Optimizer 运行只由 embed 的 `cmd/opt/opt_cfg.yaml` 定义，二进制不接受任何
-  flag。收集 tag 位于 `internal/logic/optimizer_tags/`，`GameTags` 将每个
+  flag。收集 tag 位于 `internal/logic/game_tags/`，`GameTags` 将每个
   `spec.GID` 映射到其 tag 判定函数。
 - 同一个 Problab 对每份 Artifact 只加载／映射一次，并由全部 Machine、Pool
   与 Simulator worker 共享。

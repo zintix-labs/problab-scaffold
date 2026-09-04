@@ -56,7 +56,7 @@ func TestLoadV2ConfigUsesOnlyEmbeddedIntentPlans(t *testing.T) {
 // distinction between strict-schema decoding and semantic validation without
 // reintroducing an external-config runtime path.
 func TestParseEmbeddedConfigContentFailuresAreTyped(t *testing.T) {
-	canonical, err := embeddedV2Config.ReadFile(embeddedConfigName)
+	canonical, err := optConfig.ReadFile(embeddedConfigName)
 	if err != nil {
 		t.Fatalf("read embedded %s: %v", embeddedConfigName, err)
 	}

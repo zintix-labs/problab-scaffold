@@ -27,14 +27,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/zintix-labs/problab-scaffold/internal/logic/optimizer_tags"
+	"github.com/zintix-labs/problab-scaffold/internal/logic/game_tags"
 	"github.com/zintix-labs/problab-scaffold/pkg/engine"
 	optimizerv2 "github.com/zintix-labs/problab/optimizer/v2"
 )
 
 const embeddedConfigName = "opt_cfg.yaml"
 
-var gameTags = optimizer_tags.GameTags
+var gameTags = game_tags.GameTags
 
 // main is deliberately a thin composition root: it loads the command-owned
 // embedded config, constructs Problab plus optimizer/v2, and runs every declared
@@ -165,7 +165,7 @@ func parseV2ConfigBytes(raw []byte, source string) (optimizerv2.Config, error) {
 // external config or field-level override path: embeddedConfigName is the one
 // auditable source of every RunPlan value executed by this binary.
 func loadV2Config() (optimizerv2.Config, error) {
-	raw, err := embeddedV2Config.ReadFile(embeddedConfigName)
+	raw, err := optConfig.ReadFile(embeddedConfigName)
 	if err != nil {
 		return optimizerv2.Config{}, fmt.Errorf("read embedded v2 config %q: %w", embeddedConfigName, err)
 	}
