@@ -69,6 +69,10 @@ type cliProgressReporter struct {
 	substepIndex  int
 	pendingBody   string
 	pendingInline bool
+	// replayInline tracks the single in-flight replay progress row on an
+	// interactive terminal. The source header remains permanent; only the
+	// indented counters beneath it are refreshed in place.
+	replayInline bool
 }
 
 // newCLIProgressReporter detects a character-device stderr without importing a
@@ -95,12 +99,42 @@ func (r *cliProgressReporter) Report(event optimizerv2.StageEvent) {
 	if r == nil || r.output == nil {
 		return
 	}
+	// A well-formed replay stream always ends with completed or warning. Keep a
+	// defensive newline here so an interrupted/custom Reporter event cannot
+	// cause the next unrelated stage to be printed in the middle of its row.
+	if event.Stage != "collection-replay" {
+		r.closeReplayProgress()
+	}
 	if event.Substage != "" {
 		r.reportOptimizationSubstage(event)
 		return
 	}
 	if event.Stage == "collection-progress" {
 		r.reportCollection(event)
+		return
+	}
+	switch event.Stage {
+	case "collection-replay":
+		r.reportCollectionReplay(event)
+		return
+	case "collection-replay-cursor":
+		r.reportCollectionReplayCursor(event)
+		return
+	case "collection-missing":
+		r.reportCollectionMissing(event)
+		return
+	case "collection-duplicates":
+		r.reportCollectionDuplicates(event)
+		return
+	case "collection-bank":
+		r.reportCollectionBank(event)
+		return
+	case "collection-descriptor":
+		if event.State == "warning" {
+			_, _ = fmt.Fprintf(r.output, "  [Descriptor] warning: %s\n", event.Message)
+		} else if event.State == "completed" && event.Path != "" {
+			_, _ = fmt.Fprintf(r.output, "  [Descriptor] %s\n", event.Path)
+		}
 		return
 	}
 
@@ -146,6 +180,21 @@ func (r *cliProgressReporter) Report(event optimizerv2.StageEvent) {
 	}
 }
 
+func (r *cliProgressReporter) reportCollectionReplayCursor(event optimizerv2.StageEvent) {
+	if event.State != "warning" || event.StreamCursorRecognized {
+		return
+	}
+	detail := event.Message
+	if detail == "" {
+		detail = "unrecognized filename cursor; using logical stream cursor 0 as a best-effort fallback"
+	}
+	_, _ = fmt.Fprintf(
+		r.output,
+		"  [Replay cursor] source %d/%d: %s\n                  %s\n",
+		event.SourceIndex, event.SourceCount, event.Path, detail,
+	)
+}
+
 // stageBody returns the in-flight sub-step text, falling back to a freshly built
 // value when no start event was observed (defensive; start always precedes
 // finish in a real run) so the terminal line still names its step.
@@ -168,6 +217,23 @@ func (r *cliProgressReporter) closePendingSubstep() {
 func (r *cliProgressReporter) clearPending() {
 	r.pendingBody = ""
 	r.pendingInline = false
+}
+
+// closeReplayProgress preserves an unterminated progress row before unrelated
+// output. Normal replay completion uses clearReplayProgress instead so its
+// summary replaces this row rather than adding another physical line.
+func (r *cliProgressReporter) closeReplayProgress() {
+	if r.replayInline {
+		_, _ = fmt.Fprint(r.output, "\n")
+		r.replayInline = false
+	}
+}
+
+func (r *cliProgressReporter) clearReplayProgress() {
+	if r.replayInline {
+		_, _ = fmt.Fprint(r.output, "\r\x1b[2K")
+		r.replayInline = false
+	}
 }
 
 // reportOptimizationSubstage renders the semantic optimizer sub-steps of the
@@ -236,6 +302,14 @@ func cliOptimizationStageLabel(stage optimizerv2.OptimizationStageID) string {
 // Completion is never throttled, ensuring every bar reaches 100% before the
 // following dynamic-validation stage is announced.
 func (r *cliProgressReporter) reportCollection(event optimizerv2.StageEvent) {
+	if event.State == "completed" && event.Spins == 0 {
+		_, _ = fmt.Fprintf(
+			r.output,
+			"  fresh spins=0 accepted=%d total=%d/%d\n",
+			freshAcceptedFromClasses(event.Classes), event.Accepted, event.Requested,
+		)
+		return
+	}
 	if r.interactive {
 		complete := event.Requested > 0 && event.Accepted >= event.Requested
 		if !r.lastRedraw.IsZero() && !complete && time.Since(r.lastRedraw) < collectionRedrawPeriod {
@@ -246,6 +320,109 @@ func (r *cliProgressReporter) reportCollection(event optimizerv2.StageEvent) {
 		return
 	}
 	r.logCollectionMilestones(event)
+}
+
+func (r *cliProgressReporter) reportCollectionReplay(event optimizerv2.StageEvent) {
+	switch event.State {
+	case "started":
+		r.closeReplayProgress()
+		_, _ = fmt.Fprintf(r.output, "  [Replay] source %d/%d: %s\n", event.SourceIndex, event.SourceCount, event.Path)
+	case "progress":
+		percent := collectionPercent(event.Records, event.TotalRecords)
+		line := fmt.Sprintf(
+			"           [%s] %6.2f%% records=%d/%d accepted=%d duplicate=%d unmatched=%d rejected=%d",
+			collectionBar(event.Records, event.TotalRecords), percent,
+			event.Records, event.TotalRecords, event.Accepted, event.Duplicates, event.Unmatched, event.Rejected,
+		)
+		if r.interactive {
+			_, _ = fmt.Fprintf(r.output, "\r\x1b[2K%s", line)
+			r.replayInline = true
+			return
+		}
+		_, _ = fmt.Fprintf(
+			r.output,
+			"%s\n",
+			line,
+		)
+	case "completed":
+		r.clearReplayProgress()
+		suffix := ""
+		if event.EndReason == optimizerv2.CollectionReplayEndQuotasFull {
+			suffix = " (quotas full)"
+		}
+		_, _ = fmt.Fprintf(
+			r.output,
+			"  [Replay] source %d/%d: records=%d/%d accepted=%d duplicate=%d unmatched=%d rejected=%d%s\n",
+			event.SourceIndex, event.SourceCount, event.Records, event.TotalRecords,
+			event.Accepted, event.Duplicates, event.Unmatched, event.Rejected, suffix,
+		)
+	case "warning":
+		r.clearReplayProgress()
+		label := "incompatible"
+		if event.EndReason == optimizerv2.CollectionReplayEndSourceSkipped {
+			label = "skipped"
+		}
+		_, _ = fmt.Fprintf(r.output, "  [Replay] source %d/%d %s: %s\n", event.SourceIndex, event.SourceCount, label, event.Message)
+	case "info":
+		r.closeReplayProgress()
+		if event.EndReason == optimizerv2.CollectionReplayEndQuotasFull && event.RemainingSources > 0 {
+			_, _ = fmt.Fprintf(r.output, "  [Replay] remaining %d sources not opened: quotas full\n", event.RemainingSources)
+		}
+	}
+}
+
+func (r *cliProgressReporter) reportCollectionMissing(event optimizerv2.StageEvent) {
+	parts := make([]string, 0, len(event.Classes))
+	for _, class := range event.Classes {
+		if class.Accepted >= class.Requested {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s=%d", class.Name, class.Requested-class.Accepted))
+	}
+	if len(parts) > 0 {
+		_, _ = fmt.Fprintf(r.output, "  [Missing] %s\n", strings.Join(parts, " "))
+	}
+}
+
+func (r *cliProgressReporter) reportCollectionDuplicates(event optimizerv2.StageEvent) {
+	if event.State != "warning" || event.Duplicates == 0 {
+		return
+	}
+	origins := make(map[optimizerv2.CollectionDuplicateOrigin]uint64, len(event.DuplicateOrigins))
+	for _, origin := range event.DuplicateOrigins {
+		origins[origin.Origin] = origin.Duplicates
+	}
+	_, _ = fmt.Fprintf(
+		r.output,
+		"  [Duplicate] identities=%d/%d rate=%.6f%%\n              replay-fresh=%d fresh-fresh=%d replay-replay=%d\n",
+		event.Duplicates, event.Records, event.DuplicateRate*100,
+		origins[optimizerv2.CollectionDuplicateReplayFresh],
+		origins[optimizerv2.CollectionDuplicateFreshFresh],
+		origins[optimizerv2.CollectionDuplicateReplayReplay],
+	)
+	for _, class := range event.DuplicateClasses {
+		_, _ = fmt.Fprintf(
+			r.output,
+			"              class=%s duplicates=%d unique=%d/%d\n",
+			class.Name, class.Duplicates, class.UniqueRecords, class.Records,
+		)
+	}
+	_, _ = fmt.Fprintf(r.output, "              recovery target=%s\n", event.Path)
+}
+
+func (r *cliProgressReporter) reportCollectionBank(event optimizerv2.StageEvent) {
+	if event.State != "completed" {
+		return
+	}
+	label := "Save"
+	if event.Distinct {
+		label = "Save distinct"
+	}
+	_, _ = fmt.Fprintf(
+		r.output,
+		"  [%s] %s\n         seeds=%d bytes=%d sha256=%s next_stream=%d\n",
+		label, event.Path, event.SeedCount, event.Bytes, event.SHA256, event.NextStreamOrdinal,
+	)
 }
 
 // redrawCollection paints the complete Class table in YAML declaration order.
@@ -268,8 +445,9 @@ func (r *cliProgressReporter) redrawCollection(event optimizerv2.StageEvent) {
 	}
 	_, _ = fmt.Fprintf(
 		r.output,
-		"\r\x1b[2K  spins=%d  total=%d/%d\n",
+		"\r\x1b[2K  fresh spins=%d  fresh accepted=%d  total=%d/%d\n",
 		event.Spins,
+		freshAcceptedFromClasses(event.Classes),
 		event.Accepted,
 		event.Requested,
 	)
@@ -292,7 +470,7 @@ func (r *cliProgressReporter) logCollectionMilestones(event optimizerv2.StageEve
 		r.lastMilestones[key] = milestone
 		_, _ = fmt.Fprintf(
 			r.output,
-			"[Progress] Collecting class %-18s [%s] %3d%%  %d/%d (spins=%d)\n",
+			"[Progress] Collecting class %-18s [%s] %3d%%  %d/%d (fresh spins=%d)\n",
 			class.Name,
 			collectionBar(class.Accepted, class.Requested),
 			percent,
@@ -301,6 +479,21 @@ func (r *cliProgressReporter) logCollectionMilestones(event optimizerv2.StageEve
 			event.Spins,
 		)
 	}
+	if event.State == "completed" {
+		_, _ = fmt.Fprintf(
+			r.output,
+			"  fresh spins=%d accepted=%d total=%d/%d\n",
+			event.Spins, freshAcceptedFromClasses(event.Classes), event.Accepted, event.Requested,
+		)
+	}
+}
+
+func freshAcceptedFromClasses(classes []optimizerv2.ClassCollectionProgress) uint64 {
+	total := uint64(0)
+	for _, class := range classes {
+		total += class.FreshAccepted
+	}
+	return total
 }
 
 // cliModeSuffix appends the bet-mode qualifier used on every mode-scoped entry.
@@ -493,9 +686,9 @@ func reportV2Outcome(output io.Writer, result optimizerv2.RunResult) {
 // generated mode as one CSV beneath directory, keeping the terminal clean while
 // still giving Designers the actual runtime distribution. Both conditional and
 // unconditional Bucket probabilities are emitted so a within-Class shape is
-// never confused with a whole-game hit rate, and the per-seed range is recorded
-// as runtime truth because a verified alias approximation can make individual
-// marginals differ by a tiny amount while preserving every semantic constraint.
+// never confused with a whole-game hit rate. Per-seed probability summarizes
+// the uniform allocation within each Bucket; median and mean describe its
+// empirical sample payout multipliers.
 // It returns the paths it wrote, in mode order.
 func writeModeDistributionCSVs(directory string, modes []optimizerv2.ModeRunReport) ([]string, error) {
 	written := make([]string, 0, len(modes))
@@ -530,13 +723,14 @@ func writeModeDistributionCSV(path string, report optimizerv2.BucketDistribution
 	writer := csv.NewWriter(file)
 	_ = writer.Write([]string{
 		"class",
-		"class_global_probability",
 		"bucket",
+		"class_global_probability",
 		"conditional_probability",
 		"unconditional_probability",
+		"median",
+		"mean",
 		"seed_count",
-		"seed_probability_min",
-		"seed_probability_max",
+		"seed_probability",
 		"collision_probability",
 		"draws_at_collision_probability",
 	})
@@ -546,13 +740,14 @@ func writeModeDistributionCSV(path string, report optimizerv2.BucketDistribution
 		for _, bucket := range class.Buckets {
 			_ = writer.Write([]string{
 				class.Class,
-				classProbability,
 				formatBucketInterval(bucket),
+				classProbability,
 				strconv.FormatFloat(bucket.ConditionalProbability, 'g', 9, 64),
 				strconv.FormatFloat(bucket.UnconditionalProbability, 'g', 9, 64),
+				strconv.FormatFloat(bucket.Median, 'g', 9, 64),
+				strconv.FormatFloat(bucket.Mean, 'g', 9, 64),
 				strconv.Itoa(bucket.SeedCount),
-				strconv.FormatFloat(bucket.SeedProbabilityMin, 'e', 9, 64),
-				strconv.FormatFloat(bucket.SeedProbabilityMax, 'e', 9, 64),
+				strconv.FormatFloat(bucket.SeedProbability, 'e', 9, 64),
 				collision,
 				formatCollisionDraws(bucket.DrawsAtCollisionProbability),
 			})
