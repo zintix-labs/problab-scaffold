@@ -128,7 +128,7 @@ plans:
       # fill little or none of the requested support; replaying it still consumes
       # time, while fresh collection preserves correctness by filling deficits.
       collected_seed:
-        - build/optimizer/collected/game_0/mode_0/seed_bank_1788838697_s8.bin
+        # - build/optimizer/collected/game_0/mode_0/seed_bank_1788869452_s8.bin
         
 
       # Positive number of independent fresh raw Machines. Remaining Class
@@ -187,7 +187,7 @@ plans:
 # =============================================================================
 #
 # Current human-audit totals:
-#   - Class weights: 1,000,000 exactly (the fixed system denominator);
+#   - Class weights: 1,000,000 exactly (overall.class_weight_base below);
 #   - derived unconditional RTP: 0.947932;
 #   - requested accepted replay atoms: 3,175,300.
 # These are comments only; the implementation derives and validates them from
@@ -201,7 +201,7 @@ plans:
 # Common Class field contract:
 #   weight
 #     Positive integer unconditional probability numerator. All weights must sum
-#     exactly to the fixed ClassWeightBase of 1,000,000.
+#     exactly to overall.class_weight_base (defaults to 1,000,000).
 #
 #   collect.samples
 #     Required accepted replay atoms, not spin attempts.
@@ -275,6 +275,13 @@ plans:
 intents:
   demo-designer-intent:
     overall:
+      # Integer denominator of Class probabilities; inclusive range 100K–1B.
+      # Omission preserves 1M. Weights are never automatically rescaled.
+      # To preserve Class probabilities, change every Class weight by the same
+      # factor as this base (e.g. 1M -> 1B requires all weights multiplied by 1000).
+      # When reducing the base, every scaled weight must remain a positive
+      # integer; otherwise the original probabilities cannot be preserved exactly.
+      class_weight_base: 1000000
       # Inclusive unconditional coefficient-of-variation hard range. The fixed
       # Class weights and exact Class means derive M=RTP, then CV is compiled as
       # linear second-moment bounds M^2 * (1 + CV^2). The empirical second moment
@@ -567,7 +574,7 @@ engine_options:
   # CSV draws_at_collision_probability estimates the whole-game draw count at
   # which a repeated seed in that Bucket reaches this birthday/Poisson probability.
   # This does not change design.risk.collision.max or optimization constraints.
-  distribution_collision_probability: 0.25
+  distribution_collision_probability: 0.3
 
   # Positive tolerance for scaled replay of original semantic rows after a
   # backend solve. This is the final defense against an “optimal” backend result
