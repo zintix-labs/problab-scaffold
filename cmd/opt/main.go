@@ -27,14 +27,70 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/zintix-labs/problab-scaffold/internal/converter"
 	"github.com/zintix-labs/problab-scaffold/internal/logic/game_tags"
 	"github.com/zintix-labs/problab-scaffold/pkg/engine"
+	"github.com/zintix-labs/problab/dto"
 	optimizerv2 "github.com/zintix-labs/problab/optimizer/v2"
 )
 
 const embeddedConfigName = "opt_cfg.yaml"
 
-var gameTags = game_tags.GameTags
+// These two package variables are the command's only application-owned
+// injection points. A game project repoints them at its own implementation
+// without editing runV2, problab's optimizer/v2, or the embedded YAML; the
+// values below are the defaults that ship with this scaffold.
+var (
+	// gameTags is a game_tags.GameTagCatalog, i.e.
+	// map[spec.GID]map[string]optimizer.IsTag, where each optimizer.IsTag is a
+	// func(*buf.SpinResult) bool predicate. WithCollectionTags stores it on the
+	// Collector and resolves it per plan against that plan's target game, so a
+	// GID no plan targets is simply unused and a game absent from the catalog
+	// collects with the built-in tags only. The inner map keys are the names
+	// that classes[].collect.tags.matches / .mismatches reference in
+	// opt_cfg.yaml; bg and fg are built in and must not be redefined here.
+	//
+	// The scaffold catalog lives in internal/logic/game_tags (tags_catalog.go
+	// binds GID 0 to demo_0_tags.go). To add a game, write its predicates next
+	// to demo_0_tags.go and register them in game_tags.GameTags:
+	//
+	//	// internal/logic/game_tags/mygame_tags.go
+	//	func IsFreeSpins(sr *buf.SpinResult) bool { ... }
+	//	var MyGame_7_Tags = map[string]optimizer.IsTag{"free_spins": IsFreeSpins}
+	//
+	//	// internal/logic/game_tags/tags_catalog.go
+	//	var GameTags = GameTagCatalog{0: Demo_0_Tags, 7: MyGame_7_Tags}
+	gameTags game_tags.GameTagCatalog = game_tags.GameTags
+
+	// useConverter is a dto.ResultConverter, i.e.
+	// func(dto.SpinResult) (json.RawMessage, error). WithResultConverter binds
+	// exactly one per Tuner, and both RGS families (rgs-collected and
+	// rgs-optimized) call it once per replayed record. The returned bytes are
+	// compacted and written verbatim as one line of results.jsonl.zst, so each
+	// call must return exactly one valid UTF-8 JSON value; a converter error or
+	// invalid JSON stops the Run instead of skipping the record. It cannot
+	// affect the Parquet distribution or the native artifact_v1/gacha output,
+	// and it is never called when opt_cfg.yaml lists no rgs-* format.
+	//
+	// The scaffold default, converter.IdentityConverter in internal/converter,
+	// emits the whole dto.SpinResult exactly like dto.IdentityConverter. That
+	// payload carries every record's start/after PRNG snapshots and checkpoint —
+	// the complete seed material — so do not hand its output to a party that
+	// must not receive it.
+	//
+	// The run report's converter field is decided by function identity, not by
+	// behavior: only nil or dto.IdentityConverter itself report
+	// converter=identity. Every other function, including the local
+	// converter.IdentityConverter copy, reports converter=custom, which states
+	// provenance only, not that replay state was actually removed.
+	//
+	// To supply your own, implement it in internal/converter (see problab's
+	// optimizer/v2/examples/rgs for one that drops the replay state) and assign
+	// it here:
+	//
+	//	useConverter dto.ResultConverter = converter.MyPlatformConverter
+	useConverter dto.ResultConverter = converter.IdentityConverter
+)
 
 // main is deliberately a thin composition root: it loads the command-owned
 // embedded config, constructs Problab plus optimizer/v2, and runs every declared
@@ -53,8 +109,9 @@ func main() {
 
 // runV2 owns command lifecycle and returns a stable process classification:
 // zero for a verified OPTIMAL mode that was durably staged (and may also have
-// completed the all-mode manifest), two for an expected typed non-success Run
-// status, and an error for operational failures.
+// completed the all-mode manifest) or an EXPORTED rgs-collected-only plan, two
+// for an expected typed non-success Run status, and an error for operational
+// failures.
 func runV2(arguments []string, _ io.Writer, stderr io.Writer) (int, error) {
 	if len(arguments) != 0 {
 		return 1, fmt.Errorf(
@@ -99,6 +156,7 @@ func runV2(arguments []string, _ io.Writer, stderr io.Writer) (int, error) {
 	tuner, err := optimizerv2.NewTuner(config, lab,
 		optimizerv2.WithReporter(reporter),
 		optimizerv2.WithCollectionTags(gameTags),
+		optimizerv2.WithResultConverter(useConverter),
 	)
 	if err != nil {
 		return 1, fmt.Errorf("construct optimizer/v2 tuner: %w", err)
@@ -108,16 +166,23 @@ func runV2(arguments []string, _ io.Writer, stderr io.Writer) (int, error) {
 	exitCode := 0
 	for _, plan := range config.Plans {
 		result, err := tuner.Run(ctx, optimizerv2.RunRequest{PlanID: plan.ID})
+		// Report before inspecting err: some failing stages (for example
+		// collection) still return a partial Report whose diagnostics explain
+		// the failure. Stages such as RGS export return a zero RunResult with
+		// the error, in which case this prints only a generic "Failed ()" line
+		// and the returned error carries the real cause.
+		reportV2Outcome(stderr, result)
 		if err != nil {
 			return 1, err
 		}
-		reportV2Outcome(stderr, result)
 		if !result.Succeeded() {
 			exitCode = 2
 			continue
 		}
 		// The verified distribution is a file artifact, not terminal noise: write
-		// it next to the published output and print only where it landed.
+		// it next to the published output and print only where it landed. An
+		// EXPORTED (rgs-collected only) Run skips the LP and has no Modes, so
+		// nothing is written for it.
 		paths, err := writeModeDistributionCSVs(plan.Output.Directory, result.Report.Modes)
 		if err != nil {
 			_, _ = fmt.Fprintf(stderr, "[warn] distribution report: %v\n", err)
