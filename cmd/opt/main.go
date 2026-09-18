@@ -42,7 +42,7 @@ const embeddedConfigName = "opt_cfg.yaml"
 // values below are the defaults that ship with this scaffold.
 var (
 	// gameTags is a game_tags.GameTagCatalog, i.e.
-	// map[spec.GID]map[string]optimizer.IsTag, where each optimizer.IsTag is a
+	// map[spec.GID]map[string]tag.IsTag, where each tag.IsTag is a
 	// func(*buf.SpinResult) bool predicate. WithCollectionTags stores it on the
 	// Collector and resolves it per plan against that plan's target game, so a
 	// GID no plan targets is simply unused and a game absent from the catalog
@@ -56,7 +56,7 @@ var (
 	//
 	//	// internal/logic/game_tags/mygame_tags.go
 	//	func IsFreeSpins(sr *buf.SpinResult) bool { ... }
-	//	var MyGame_7_Tags = map[string]optimizer.IsTag{"free_spins": IsFreeSpins}
+	//	var MyGame_7_Tags = map[string]tag.IsTag{"free_spins": IsFreeSpins}
 	//
 	//	// internal/logic/game_tags/tags_catalog.go
 	//	var GameTags = GameTagCatalog{0: Demo_0_Tags, 7: MyGame_7_Tags}
