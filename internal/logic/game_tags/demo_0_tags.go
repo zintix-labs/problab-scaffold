@@ -15,15 +15,22 @@
 package game_tags
 
 import (
-	"github.com/zintix-labs/problab/optimizer"
 	"github.com/zintix-labs/problab/sdk/buf"
+	"github.com/zintix-labs/problab/sdk/tag"
 )
 
-var Demo_0_Tags = map[string]optimizer.IsTag{
-	"demo_0_tag_1": Demo_0_IsMatchClass01,
+var Demo_0_Tags = map[string]tag.IsTag{
+	"bg": Demo_0_IsOnlyBG,
+	"fg": Demo_0_IsEntryFree,
 }
 
-// Demo_0_IsMatchClass01
-func Demo_0_IsMatchClass01(sr *buf.SpinResult) bool {
-	return true
+// Demo_0_IsOnlyBG selects results containing only the base game.
+func Demo_0_IsOnlyBG(sr *buf.SpinResult) bool {
+	return sr.GameModeCount == 1
+}
+
+// Demo_0_IsEntryFree preserves this game's collection policy: free-game payout
+// divided by bet using integer division must exceed five (not merely enter FG).
+func Demo_0_IsEntryFree(sr *buf.SpinResult) bool {
+	return sr.GameModeCount > 1 && ((sr.TotalWin-sr.GameModeList[0].TotalWin)/sr.Bet) > 5
 }

@@ -15,7 +15,7 @@
 package game_tags
 
 import (
-	"github.com/zintix-labs/problab/optimizer"
+	"github.com/zintix-labs/problab/sdk/tag"
 	"github.com/zintix-labs/problab/spec"
 )
 
@@ -24,7 +24,7 @@ import (
 // catalog value is passed to the Tuner without conversion. Tag names are the
 // ones opt_cfg.yaml references from classes[].collect.tags; bg and fg are
 // built in and must not be redefined.
-type GameTagCatalog map[spec.GID]map[string]optimizer.IsTag
+type GameTagCatalog map[spec.GID]map[string]tag.IsTag
 
 // GameTags binds each game's collection tag set to its spec.GID. This is the
 // one place in the repository that owns this binding — per-game tag files
