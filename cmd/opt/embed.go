@@ -1,5 +1,3 @@
-//go:build !poc
-
 // Copyright 2025 Zintix Labs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,9 +16,8 @@ package main
 
 import "embed"
 
-// optConfig contains only the production v2 RunPlan. The historical
-// nine-case formulation POC remains available with `-tags poc` and therefore
-// cannot be mistaken for the command's runtime optimizer configuration.
+// optConfig contains the command's optimizer v2 configuration.
+// Every declared RunPlan is executed through the shared CLI facade.
 //
 //go:embed opt_cfg.yaml
 var optConfig embed.FS

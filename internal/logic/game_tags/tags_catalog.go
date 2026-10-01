@@ -23,7 +23,7 @@ import (
 // the same underlying type that optimizerv2.WithCollectionTags accepts, so a
 // catalog value is passed to the Tuner without conversion. Tag names are the
 // ones opt_cfg.yaml references from classes[].collect.tags; bg and fg are
-// built in and must not be redefined.
+// project-defined predicates, not built-in optimizer tags.
 type GameTagCatalog map[spec.GID]map[string]tag.IsTag
 
 // GameTags binds each game's collection tag set to its spec.GID. This is the
