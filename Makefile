@@ -1,7 +1,6 @@
 # -----------------------------------------------------------------------------
 # Project Variables
 # -----------------------------------------------------------------------------
-PROJECT_NAME  ?= problab-scaffold
 PROFILING_DIR = build/profiling
 BIN_DIR       = build/bin
 BINARY_NAME   = run
@@ -20,9 +19,6 @@ b  ?=
 m  ?=
 r  ?=
 s  ?=
-l  ?=
-u  ?=
-t  ?=
 
 # default flag value
 game     ?= 0
@@ -32,28 +28,19 @@ bets     ?= 200
 betmode  ?= 0
 rounds   ?= 10000000
 seed     ?= 2305843009213693951
-logmode  ?= dev      # dev|prod|discard
-buf      ?= 3        # machine pool buffer size
-svrmode  ?= dev      # dev|prod
 
 # alias
-GAME_E    := $(or $(g),$(game),0)
-WORKER_E  := $(or $(w),$(worker),1)
-PLAYERS_E := $(or $(p),$(players),1)
-BETS_E    := $(or $(b),$(bets),200)
-BETMODE_E := $(or $(m),$(betmode),0)
-ROUNDS_E  := $(or $(r),$(rounds),10000000)
-SEED_E    := $(or $(s),$(seed),2305843009213693951)
-LOGMODE_E := $(or $(l),$(logmode),dev)
-BUF_E     := $(or $(u),$(buf),3)
-SVRMODE_E := $(or $(t),$(svrmode),dev)
+GAME_E    := $(if $(g),$(g),$(game))
+WORKER_E  := $(if $(w),$(w),$(worker))
+PLAYERS_E := $(if $(p),$(p),$(players))
+BETS_E    := $(if $(b),$(b),$(bets))
+BETMODE_E := $(if $(m),$(m),$(betmode))
+ROUNDS_E  := $(if $(r),$(r),$(rounds))
+SEED_E    := $(if $(s),$(s),$(seed))
 
 
 # combine args
 RUN_ARGS = -game $(GAME_E) -worker $(WORKER_E) -player $(PLAYERS_E) -bets $(BETS_E) -mode $(BETMODE_E) -spins $(ROUNDS_E) -seed $(SEED_E)
-
-# server args (separate to avoid conflict with -mode in RUN_ARGS)
-SVR_ARGS = -log $(LOGMODE_E) -buf $(BUF_E) -mode $(SVRMODE_E)
 
 # pprof args: Go flag: var ProfileType = flag.String("p", ...))
 PPROF_CPU_ARGS    = -p=cpu    $(RUN_ARGS)
@@ -85,7 +72,7 @@ OPS_SRC = $(wildcard scripts/*.go)
 # -----------------------------------------------------------------------------
 # .PHONY
 # -----------------------------------------------------------------------------
-.PHONY: all build run bin clean help h svr dev
+.PHONY: all build run bin clean help h svr dev exp
 .PHONY: pprof read-pprof heap read-heap allocs read-allocs pgo
 .PHONY: test test-all test-detail
 .PHONY: docker-build docker-run docker-sh docker-clean docker-prune
@@ -123,7 +110,7 @@ run:
 ## boost HTTP Server（go run）
 svr:
 	@printf "$(GREEN)Starting HTTP Server...$(RESET)\n"
-	@go run ./cmd/svr $(SVR_ARGS)
+	@go run ./cmd/svr
 
 ## execute binary file
 bin:
@@ -138,6 +125,10 @@ dev:
 ## Optimizer
 opt:
 	@go run ./cmd/opt
+
+## Finite player experience analysis (embedded cmd/exp/exp_cfg.yaml)
+exp:
+	@go run ./cmd/exp
 
 ## clean go cache & build
 clean: 
@@ -243,13 +234,11 @@ docker-prune:
 ## Show this help message (alias: h)
 help: 
 	@echo ""
-	@echo "$(GREEN)$(PROJECT_NAME)$(RESET)"
+	@echo "$(GREEN)Problab$(RESET)"
 	@echo ""
 	@echo "Usage:  make $(BLUE)<target>$(RESET) [ARGS...]"
 	@echo ""
 	@echo "Arguments (Long / Short):"
-	@echo ""
-	@echo "  $(GREEN)[run]$(RESET) (Simulation)"
 	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "game    / g" "$(GAME_E)" "Target game name"
 	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "worker  / w" "$(WORKER_E)" "Number of parallel workers"
 	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "player  / p" "$(PLAYERS_E)" "Number of simulated players"
@@ -257,11 +246,6 @@ help:
 	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "bets    / b" "$(BETS_E)" "Initial balance in bets"
 	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "betmode / m" "$(BETMODE_E)" "Bet mode index"
 	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "seed    / s" "$(SEED_E)" "int64 seed for RNG init"
-	@echo ""
-	@echo "  $(GREEN)[svr/dev]$(RESET) (HTTP Server & Dev Panel)"
-	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "logmode / l" "$(LOGMODE_E)" "Server log mode: dev|prod|discard"
-	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "buf     / u" "$(BUF_E)" "Machine pool buffer size"
-	@printf "  $(BLUE)%-13s$(RESET) = %-20s (%s)\n" "svrmode / t" "$(SVRMODE_E)" "Server mode: dev|prod (exposed routes)"
 	@echo ""
 	@echo "Docker Arguments:"
 	@printf "  $(BLUE)%-13s$(RESET) = %-12s (%s)\n" "DOCKER_IMAGE" "$(DOCKER_IMAGE)" "Docker image name"
@@ -272,10 +256,11 @@ help:
 	@echo "  $(GREEN)[Basic Operations]$(RESET)"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "build" "Build standard binary to $(BINARY_PATH)"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "run" "Run simulation using 'go run'"
-	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "dev" "Start Dev Web Panel"
+	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "dev" "Open Dev Web Panel at http://localhost:5808/dev"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "opt" "Run optimizer"
-	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "svr" "Start HTTP server (use logmode/buf/svrmode)"
-	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "bin" "Run compiled binary"
+	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "exp" "Analyze finite player experiences (cmd/exp/exp_cfg.yaml)"
+	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "svr" "Start HTTP server using 'go run ./cmd/svr'"
+	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "bin" "Run compiled binary (faster startup)"
 	@printf "    $(BLUE)%-12s$(RESET)  %s\n" "clean" "Remove build artifacts and cache"
 	@echo ""
 	@echo "  $(GREEN)[Profiling & Optimization]$(RESET)"

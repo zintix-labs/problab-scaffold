@@ -46,6 +46,7 @@ coverprofile.out
 build/bin/*
 build/profiling/*
 build/optimizer/*
+build/exp/*
 
 # usually ignored
 dist/

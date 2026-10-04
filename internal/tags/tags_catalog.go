@@ -12,24 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package game_tags
+package tags
 
 import (
 	"github.com/zintix-labs/problab/sdk/tag"
-	"github.com/zintix-labs/problab/spec"
 )
 
-// GameTagCatalog maps each game's spec.GID to its named collection tags. It has
-// the same underlying type that optimizerv2.WithCollectionTags accepts, so a
-// catalog value is passed to the Tuner without conversion. Tag names are the
-// ones opt_cfg.yaml references from classes[].collect.tags; bg and fg are
-// project-defined predicates, not built-in optimizer tags.
-type GameTagCatalog map[spec.GID]map[string]tag.IsTag
-
-// GameTags binds each game's collection tag set to its spec.GID. This is the
+// Catalog binds each game's collection and analysis tags to its spec.GID. This is the
 // one place in the repository that owns this binding — per-game tag files
-// (such as demo_0_tags.go) define the predicates, and cmd/opt injects this
-// catalog as its default gameTags.
-var GameTags = GameTagCatalog{
+// (such as demo_0_tags.go) define the predicates. Both cmd/opt and cmd/exp
+// inject this catalog as their default gameTags.
+var Catalog = tag.GameTagCatalog{
 	0: Demo_0_Tags,
 }
