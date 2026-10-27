@@ -9,7 +9,7 @@ analysis:
     player:
       players: 1000
       init_bet: 300 # Initial balance = this value * game BetUnits[0].
-      strategy: monotone # Fixed wager; target is 3x initial balance, at most 5000 spins (internal/strategy/game_0.go).
+      strategy: monotone # Fixed wager; target is 3x initial balance, at most 5000 spins (internal/strategies/game_0.go).
     win_buckets: [0, 0.5, 1, 2, 5, 10]
     events: # First match only; predicates within tags are AND-ed.
       - event: zero_win

@@ -72,8 +72,8 @@ var (
 	// Logic registry: register your game logic builders/handlers.
 	// You can merge multiple registries, but a single registry is easiest to reason about.
 	logics []*slot.LogicRegistry = problab.Logics(logic.Logics)
-	// Optimal Artifacts are regular files rather than embedded assets so Problab
-	// can read-only mmap them. Runtime entrypoints call engine.New() and share
+	// Optimal gacha pairs are regular files rather than embedded assets so Problab
+	// can read-only mmap their seed banks. Runtime entrypoints call engine.New() and share
 	// this single project-owned source root.
 	optimalOption problab.ProblabOption = problab.WithOptimalDir(optimalDir)
 )
@@ -109,7 +109,7 @@ func MustNew() *problab.Problab {
 
 // NewForOptimizer constructs the project-owned Lab used for raw optimizer
 // collection. It shares the runtime PRNG factory, configs, and logic registry,
-// but deliberately does not mount or preload an already-published Artifact.
+// but deliberately does not mount or preload an already-published gacha pair.
 func NewForOptimizer() (*problab.Problab, error) {
 	pb, err := problab.New(
 		pRNGFactory,

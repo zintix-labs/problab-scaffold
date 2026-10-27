@@ -1,3 +1,17 @@
+# Copyright 2026 Zintix Labs
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # =============================================================================
 # Problab LP / Math Intent Optimizer v2 — embedded production configuration
 # =============================================================================
@@ -10,13 +24,13 @@
 # Ownership is deliberately separated:
 #   - plans: routing, collection, candidate, and publication policy;
 #   - intents: the Designer-owned mathematical contract;
-#   - engine_options: bounded numerical controls owned by engineering.
+#   - engine_options: bounded numerical controls and reporting thresholds.
 #
 # Every parsed value participates in the resolved configuration hash. Runtime
 # durations and progress events do not. Changing a seed, budget, tolerance, or
 # any Designer value therefore creates a different auditable run configuration.
 #
-# The solver uses a strict lexicographic sequence. Every later stage preserves
+# The solver uses a strict priority sequence. Every later stage preserves
 # the solution space locked by all earlier stages:
 #
 #   1. prove-hard-feasibility
@@ -44,10 +58,11 @@
 #      into Designer-authored intent.
 #
 #   5. select-canonical-bucket-probabilities
-#      Lexicographically minimize primary bucket masses in stable Class/bucket
-#      order to choose one deterministic serialization representative. This is
-#      not a player-experience score and makes no claim that the representative
-#      is more fun than another point in the same locked feasible space.
+#      Use one LP to minimize the unconditional second moment (minimum CV at
+#      fixed positive RTP), preserving all earlier locks and the CV hard range.
+#      This favors lower weighted within-Class variance, not a player-experience
+#      score. Multiple optima are accepted. Reproducibility is scoped to fixed
+#      inputs and execution environment, not different platforms/solver versions.
 #
 # An infeasible soft-stage probe is a normal bisection signal. It narrows the
 # bracket; it does not fail the Run, rewrite the YAML, or ask the Designer to
@@ -65,10 +80,19 @@ plans:
 
     # Select one frozen Problab catalog game and exactly one zero-based bet mode.
     # Sibling modes require separate RunPlans so each mode may own an independent
-    # intent, seed, collection budget, solve, and pending-publication transaction.
+    # intent, seed, collection budget, solve, and publication.
     target:
       game: 0
       bet_modes: [0]
+      # Optional: collect the continuation segment entered through
+      # choose_next[choice] instead of the initial segment. The published gacha
+      # belongs to that entry value (7 below) and is listed under
+      # optimal_setting.modes[].after in the game config. Both keys are
+      # required; omit input entirely for the initial segment. RGS outputs are
+      # not supported with an input.
+      # input:
+      #   choose_next: [3, 7]
+      #   choice: 1
 
     # Stable engine routing key. v2 currently accepts only intent_lp_v2.
     engine: intent_lp_v2
@@ -76,28 +100,79 @@ plans:
     # Stable key of the Designer-owned MathIntent below.
     intent: demo-designer-intent
 
-    # int64 seed for worker 0 and the deterministic sub-seed generator used by
-    # later workers. This is provenance, not a quality-tuning knob. A different
-    # seed intentionally produces a different collection experiment.
+    # Root seed material for worker 0 and deterministic later-worker derivation.
+    # This remains one scalar and accepts exactly three forms:
+    #   seed: 4127483647          # legacy int64; byte/hash compatible
+    #   seed: "utf8:release-9"    # exact non-empty UTF-8 suffix bytes
+    #   seed: "hex:0011aaff"      # exact decoded bytes; output is lowercase
+    # Bare strings, empty material, malformed/odd hex, uppercase prefixes, and
+    # decoded material above 1024 bytes are rejected without guessing or
+    # fallback. The configured PRNG factory must accept the resulting bytes;
+    # PCG64 accepts only the canonical 8-byte int64 form, while default ChaCha20
+    # accepts variable-length material. This is provenance, not a quality knob.
+    # hex: is an initial root seed, NOT a Core snapshot and not a replay path;
+    # use collection.collected_seed below to replay snapshot banks.
     seed: 4127483647
 
     # Execution policy. These values cannot alter or relax Designer hard rows.
     collection:
-      # Positive number of independent raw Machines. Class quotas and max_spins
-      # are statically partitioned by worker index. Workers do not race for a
-      # shared quota or borrow another worker's unused spin budget. The same seed
-      # and worker count therefore reproduce the same streams and merge order;
-      # changing workers changes the stream partition and expected sample set.
+      # Optional ordered raw Core snapshot banks. Every snapshot is replayed
+      # with the current game and selected mode, then tagged and classified
+      # again using the current Class declarations. No manifest or historical
+      # payout metadata is trusted. Missing, malformed, or incompatible sources
+      # are warned and skipped before fresh collection fills only the remaining
+      # Class quotas.
+      #
+      # Relative paths are resolved from cmd/opt's startup working directory.
+      # Exact snapshot identity is deduplicated across every listed replay bank;
+      # the first occurrence in list/record order wins. Fresh parallel
+      # collection is not deduplicated inline against replay or other workers.
+      # After collection, exact snapshot bytes are audited independently inside
+      # each Class. A same-Class duplicate writes only a Class-local deduplicated
+      # *.distinct.bin recovery bank and stops before Prepare; it is never
+      # silently repaired or refilled. Replay records do not consume max_spins.
+      # Replay progress refreshes every batch_size processed records.
+      #
+      # New banks use seed_bank_<unix>_s<next>.bin. The _sN value is the next
+      # unallocated logical worker-stream ordinal, not a direct DeriveSeed Index.
+      # A top-up starts at the maximum recognized _sN across ALL configured
+      # paths, even when a source is missing, incompatible, or left unopened.
+      # Starting fresh fan-out reserves exactly workers logical streams. This is
+      # best-effort collision avoidance; third-party DeriveSeed implementations
+      # can still collide, which is why the post-collection audit is mandatory.
+      # Legacy or renamed filenames without _sN remain replayable, but warn and
+      # contribute cursor 0.
+      #
+      # The optimizer does not maintain or discover a "latest" bank. After a
+      # Run, manually copy the desired timestamped filename into this list for
+      # the next Run. Listing overlapping banks is safe because replay
+      # deduplicates them completely. A bank saves fresh work only when its
+      # unique snapshots are still accepted by the current mode, Tag rules,
+      # Class ranges, and remaining quotas. A stale or unrepresentative bank may
+      # fill little or none of the requested support; replaying it still consumes
+      # time, while fresh collection preserves correctness by filling deficits.
+      collected_seed:
+        # - build/optimizer/collected/game_0/mode_0/seed_bank_1788869452_s8.bin
+
+
+      # Positive number of independent fresh raw Machines. Remaining Class
+      # quotas and max_spins are statically partitioned by worker index. Workers
+      # do not race for a shared quota or borrow another worker's unused spin
+      # budget. The same seed, worker count, and replay filename cursor reproduce
+      # the same fresh streams and merge order; changing workers or the maximum
+      # configured _sN changes the stream partition and expected sample set.
       workers: 4
 
-      # Positive aggregate progress-reporting cadence in produced spins. This
-      # does not create batches, change worker count, or change accepted results.
+      # Positive progress cadence: processed records during replay and produced
+      # spins during fresh collection. This does not create batches, change
+      # worker count, or change accepted results.
       batch_size: 500000
 
-      # Positive hard budget in attempted spins, not accepted samples. Collection
-      # stops with CollectionInsufficient if all Class quotas are not full when
-      # the statically partitioned worker budgets are exhausted. It never retries
-      # indefinitely or silently reduces a Class's requested sample count.
+      # Positive hard budget in fresh attempted spins, not replay records or
+      # accepted samples. Collection stops with CollectionInsufficient if all
+      # Class quotas are not full when the statically partitioned worker budgets
+      # are exhausted. It never retries indefinitely or silently reduces a
+      # Class's requested sample count.
       max_spins: 10000000000
 
     # Explicit outer-evaluation boundary. v2 currently emits one canonical LP
@@ -108,27 +183,27 @@ plans:
       # Must be exactly 1 while evaluator is `none`.
       max_candidates: 1
 
-    # Both formats are materialized from the same verified AliasTableF64 and
-    # seed bank. Adding a format does not rerun or change the LP.
+    # Native formats share the verified AliasTableF64 and seed bank.
+    # RGS formats use point probabilities (optimized) or no LP (collected).
     output:
-      # optimal_gacha: legacy gacha_<mode>.json.zst + seed_bank_<mode>.bin.
-      # optimal_artifact_v1: manifest + prob/aliases/seed-bank binary bundle.
+      # optimal_gacha: gacha.json.zst + seed_bank.bin per bet mode.
+      # rgs-collected: complete collection catalog + results.jsonl.zst; skips LP.
+      # rgs-optimized: LP point distribution.parquet + results.jsonl.zst.
+      # Both RGS formats always use ZSTD (internal compression for Parquet).
+      # Mixed output runs collected first, then LP, optimized, and native.
+      # Default DTO JSON includes PRNG state; set useConverter in cmd/opt/main.go
+      # to remove sensitive data and encode your platform's result schema.
       # The list must be non-empty, contain no duplicates, and use known formats.
       format:
         - optimal_gacha
-        - optimal_artifact_v1
 
-      # Common output root:
-      #   <directory>/gacha/game_<gid>
-      #   <directory>/artifact_v1/game_<gid>
-      #
-      # One successful mode first atomically replaces its mode directory under
-      # game_<gid>.pending. A partial set has no manifest and remains invisible
-      # to runtime consumers. When all runtime modes are present, each writer
-      # assembles a complete bundle, writes the manifest last, validates file
-      # digests/topology and the production loader, then atomically replaces the
-      # visible game directory. Pending state is retained so a later single-mode
-      # rerun can converge with the latest verified sibling modes.
+      # Common output root. Each successful mode is published on its own as
+      #   <directory>/gacha/game_<gid>/mode_<mode>/<id>/gacha.json.zst
+      #   <directory>/gacha/game_<gid>/mode_<mode>/<id>/seed_bank.bin
+      # where <id> comes from the content. The pair is written to a staging
+      # directory, checked with the production loader, and renamed into place;
+      # a published directory is never rewritten, and rerunning with the same
+      # content reuses it. Point the game config's gachas/seed_bank at the pair.
       directory: build/optimizer
 
 # =============================================================================
@@ -136,7 +211,7 @@ plans:
 # =============================================================================
 #
 # Current human-audit totals:
-#   - Class weights: 1,000,000 exactly (the fixed system denominator);
+#   - Class weights: 1,000,000 exactly (overall.class_weight_base below);
 #   - derived unconditional RTP: 0.947932;
 #   - requested accepted replay atoms: 3,175,300.
 # These are comments only; the implementation derives and validates them from
@@ -150,7 +225,7 @@ plans:
 # Common Class field contract:
 #   weight
 #     Positive integer unconditional probability numerator. All weights must sum
-#     exactly to the fixed ClassWeightBase of 1,000,000.
+#     exactly to overall.class_weight_base (defaults to 1,000,000).
 #
 #   collect.samples
 #     Required accepted replay atoms, not spin attempts.
@@ -224,6 +299,13 @@ plans:
 intents:
   demo-designer-intent:
     overall:
+      # Integer denominator of Class probabilities; inclusive range 100K–1B.
+      # Omission preserves 1M. Weights are never automatically rescaled.
+      # To preserve Class probabilities, change every Class weight by the same
+      # factor as this base (e.g. 1M -> 1B requires all weights multiplied by 1000).
+      # When reducing the base, every scaled weight must remain a positive
+      # integer; otherwise the original probabilities cannot be preserved exactly.
+      class_weight_base: 1000000
       # Inclusive unconditional coefficient-of-variation hard range. The fixed
       # Class weights and exact Class means derive M=RTP, then CV is compiled as
       # linear second-moment bounds M^2 * (1 + CV^2). The empirical second moment
@@ -283,18 +365,18 @@ intents:
         weight: 7880
         collect:
           samples: 55000
-          win_range: [10.0, 50.0]
+          win_range: [10.0001, 50.0]
           tags:
             matches: [bg]
             mismatches: []
         design:
           exp: 17.0
-          median: [10, 17]
+          median: [10.0001, 17]
           subjective:
             intent: true
             # [10,11), [11,15), [15,20), [20,30), [30,50]. A payout of
             # exactly 15.0 belongs to [15,20), not [11,15).
-            buckets: [10.0, 11.0, 15.0, 20.0, 30.0, 50.0]
+            buckets: [10.0001, 11.0, 15.0, 20.0, 30.0, 50.0]
             main_experience:
               groups:
                 - [11.0, 15.0]
@@ -310,16 +392,16 @@ intents:
         weight: 80
         collect:
           samples: 2000
-          win_range: [50.0, 500.0]
+          win_range: [50.0001, 500.0]
           tags:
             matches: [bg]
             mismatches: []
         design:
           exp: 100.0
-          median: [50.0, 100.0]
+          median: [50.0001, 100.0]
           subjective:
             intent: true
-            buckets: [50.0, 55.0, 80.0, 120.0, 180.0, 250.0, 350.0, 500.0]
+            buckets: [50.0001, 55.0, 80.0, 120.0, 180.0, 250.0, 350.0, 500.0]
             main_experience:
               groups:
                 - [55.0,80.0]
@@ -365,19 +447,19 @@ intents:
         weight: 720
         collect:
           samples: 50000
-          win_range: [25.0,50.0]
+          win_range: [25.0001,50.0]
           tags:
             matches: [fg]
             mismatches: []
         design:
           exp: 30.0
-          median: [25.0,30.0]
+          median: [25.0001,30.0]
           subjective:
             intent: true
-            buckets: [25.0, 28.0, 35.0,50.0]
+            buckets: [25.0001, 28.0, 35.0,50.0]
             main_experience:
               groups:
-                - [25.0,28.0]
+                - [25.0001,28.0]
               probability:
                 min: 0.60
                 max: 0.99
@@ -389,19 +471,19 @@ intents:
         weight: 1494
         collect:
           samples: 80000
-          win_range: [50.0,100.0]
+          win_range: [50.0001,100.0]
           tags:
             matches: [fg]
             mismatches: []
         design:
           exp: 60.0
-          median: [50.0,60.0]
+          median: [50.0001,60.0]
           subjective:
             intent: true
-            buckets: [50.0,60.0,75.0,100.0]
+            buckets: [50.0001,60.0,75.0,100.0]
             main_experience:
               groups:
-                - [50.0,60.0]
+                - [50.0001,60.0]
                 - [60.0,75.0]
               probability:
                 min: 0.6
@@ -413,16 +495,16 @@ intents:
         weight: 1300
         collect:
           samples: 60000
-          win_range: [100.0,300.0]
+          win_range: [100.0001,300.0]
           tags:
             matches: [fg]
             mismatches: []
         design:
           exp: 160.0
-          median: [100.0,160.0]
+          median: [100.0001,160.0]
           subjective:
             intent: true
-            buckets: [100.0,125.0,150.0,250.0,300.0]
+            buckets: [100.0001,125.0,150.0,250.0,300.0]
             main_experience:
               groups:
                 - [125,150]
@@ -436,19 +518,19 @@ intents:
         weight: 100
         collect:
           samples: 40000
-          win_range: [300.0,500.0]
+          win_range: [300.0001,500.0]
           tags:
             matches: [fg]
             mismatches: []
         design:
           exp: 330
-          median: [300.0,330.0]
+          median: [300.0001,330.0]
           subjective:
             intent: true
-            buckets: [300.0,330.0,360.0,420.0,500.0]
+            buckets: [300.0001,330.0,360.0,420.0,500.0]
             main_experience:
               groups:
-                - [300.0,330.0]
+                - [300.0001,330.0]
               probability:
                 min: 0.5
                 max: 0.85
@@ -459,19 +541,19 @@ intents:
         weight: 35
         collect:
           samples: 3000
-          win_range: [500.0,750.0]
+          win_range: [500.0001,750.0]
           tags:
             matches: [fg]
             mismatches: []
         design:
           exp: 520
-          median: [500.0,520.0]
+          median: [500.0001,520.0]
           subjective:
             intent: true
-            buckets: [500.0,525.0,540.0,600.0,750]
+            buckets: [500.0001,525.0,540.0,600.0,750]
             main_experience:
               groups:
-                - [500.0,525.0]
+                - [500.0001,525.0]
               probability:
                 min: 0.5
                 max: 0.99
@@ -485,19 +567,19 @@ intents:
         weight: 11
         collect:
           samples: 300
-          win_range: [750.0,1000.0]
+          win_range: [750.0001,1000.0]
           tags:
             matches: [fg]
             mismatches: []
         design:
           exp: 780
-          median: [750.0,780.0]
+          median: [750.0001,780.0]
           subjective:
             intent: true
-            buckets: [750.0,780.0,850.0,1000.0]
+            buckets: [750.0001,780.0,850.0,1000.0]
             main_experience:
               groups:
-                - [750.0,850.0]
+                - [750.0001,850.0]
               probability:
                 min: 0.4
                 max: 0.95
@@ -508,10 +590,16 @@ intents:
 # =============================================================================
 #
 # Every field is required, finite/bounded as documented, reported, and included
-# in the configuration hash. These are numerical safety and resolution controls;
+# in the configuration hash. These are numerical controls and report thresholds;
 # they must never be changed automatically after an infeasible result to make a
 # Designer contract appear feasible.
 engine_options:
+  # Reporting-only collision threshold, strictly between 0 and 1. Each Bucket's
+  # CSV draws_at_collision_probability estimates the whole-game draw count at
+  # which a repeated seed in that Bucket reaches this birthday/Poisson probability.
+  # This does not change design.risk.collision.max or optimization constraints.
+  distribution_collision_probability: 0.3
+
   # Positive tolerance for scaled replay of original semantic rows after a
   # backend solve. This is the final defense against an “optimal” backend result
   # whose returned vector violates the authored model beyond accepted error.
@@ -534,18 +622,23 @@ engine_options:
   # bucket-probability tolerance.
   visibility_tolerance: 1.0e-8
 
-  # Positive fixed intermediate-probe budget after endpoint checks for common
-  # Main-profile delta. If delta=0 is feasible, no intermediate bisection runs;
-  # otherwise the engine performs exactly this many midpoint probes.
+  # Positive maximum number of midpoint probes after the endpoint checks for
+  # common Main-profile delta. If delta=0 is feasible, no intermediate bisection
+  # runs. Otherwise the search stops as soon as the verified bracket width
+  # reaches 1e-8, and never runs more than this many probes. Halving [0, 2]
+  # needs 28 probes to reach 1e-8; a smaller value ends in PrecisionUnproven.
   profile_bisection_iterations: 40
 
-  # Positive fixed intermediate-probe budget after rho=0 and rho=1 checks for
-  # common normalized Other-bucket visibility. An infeasible probe only tightens
-  # the bracket and never changes the Run's hard-feasibility status.
+  # Positive maximum number of midpoint probes after the rho=0 and rho=1 checks
+  # for common normalized Other-bucket visibility. The search stops as soon as
+  # the verified bracket width reaches 1e-8 (27 probes on [0, 1]). An infeasible
+  # probe only tightens the bracket and never changes the Run's hard-feasibility
+  # status.
   other_visibility_bisection_iterations: 40
 
-  # Positive fixed intermediate-probe budget after rho=0 and rho=1 checks for
-  # common normalized visibility among supported siblings inside eligible Main
-  # Groups. If no Group has at least two supported buckets, the stage is reported
-  # as inapplicable and does not call the solver.
+  # Positive maximum number of midpoint probes after the rho=0 and rho=1 checks
+  # for common normalized visibility among supported siblings inside eligible
+  # Main Groups. The search stops as soon as the verified bracket width reaches
+  # 1e-8 (27 probes on [0, 1]). If no Group has at least two supported buckets,
+  # the stage is reported as inapplicable and does not call the solver.
   main_group_internal_visibility_bisection_iterations: 40

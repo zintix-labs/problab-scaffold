@@ -93,14 +93,14 @@ func TestNewMachine(t *testing.T) {
 	lab := newTestLab(t)
 
 	for _, id := range []spec.GID{0, 1} {
-		m, err := lab.NewMachine(id, true)
+		m, err := lab.NewMachine(id, problab.MachineConfig{})
 		if err != nil {
 			t.Fatalf("NewMachine(%d) error: %v", id, err)
 		}
 		if m == nil {
 			t.Fatalf("NewMachine(%d) returned nil", id)
 		}
-		if result := m.SpinInternal(0); result == nil {
+		if result := m.SpinUnsafe(problab.SpinInput{BetMult: 1}); result == nil {
 			t.Fatalf("NewMachine(%d) returned nil Spin result", id)
 		}
 	}

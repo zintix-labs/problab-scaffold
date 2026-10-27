@@ -46,6 +46,8 @@ github.com/xyproto/randomstring v1.0.5 h1:YtlWPoRdgMu3NZtP45drfy1GKoojuR7hmRcnhZ
 github.com/xyproto/randomstring v1.0.5/go.mod h1:rgmS5DeNXLivK7YprL0pY+lTuhNQW3iGxZ18UQApw/E=
 github.com/zintix-labs/problab v0.15.0 h1:WWDHXMtV+x+CDptrgzu7meODkMehzRhGsXhJ9XO2CFs=
 github.com/zintix-labs/problab v0.15.0/go.mod h1:HRSVOy2k7qAJM//YnxpD7OTI8XThHZt53KfzKEqoaUs=
+github.com/zintix-labs/problab v0.16.1-0.20261027154532-793441283eda h1:vWRRBQ3IhavChuAO4ZUoVjnGHqJGtZXWaqz1oo77gck=
+github.com/zintix-labs/problab v0.16.1-0.20261027154532-793441283eda/go.mod h1:HRSVOy2k7qAJM//YnxpD7OTI8XThHZt53KfzKEqoaUs=
 golang.org/x/crypto v0.55.0 h1:+KWHjbgOaAQ66dh/YlkZKHlz9ZUlq61AFirAR9ntP8M=
 golang.org/x/crypto v0.55.0/go.mod h1:uq0V9dE/fzQuJtbnL+2EhWOE63vo164FY8xqEnV9xis=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

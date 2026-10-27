@@ -24,6 +24,7 @@ import (
 	"syscall"
 
 	"github.com/zintix-labs/problab"
+	"github.com/zintix-labs/problab-scaffold/internal/converter"
 	"github.com/zintix-labs/problab-scaffold/internal/tags"
 	"github.com/zintix-labs/problab-scaffold/pkg/engine"
 	"github.com/zintix-labs/problab/dto"
@@ -66,7 +67,7 @@ var (
 	// compacted and written verbatim as one line of results.jsonl.zst, so each
 	// call must return exactly one valid UTF-8 JSON value; a converter error or
 	// invalid JSON stops the Run instead of skipping the record. It cannot
-	// affect the Parquet distribution or the native artifact_v1/gacha output.
+	// affect the Parquet distribution or the native gacha output.
 	//
 	// The default dto.IdentityConverter emits the whole dto.SpinResult, which
 	// carries every record's start/after PRNG snapshots and checkpoint — that
@@ -76,11 +77,13 @@ var (
 	// converter=custom, which states provenance only, not that replay state was
 	// actually removed.
 	//
-	// To supply your own, implement the function in your own package and assign
-	// it here; optimizer/v2/examples/rgs shows one that drops the replay state:
+	// The scaffold's converters live in internal/converter:
+	// converter.IdentityConverter emits the same payload as
+	// dto.IdentityConverter (reported as converter=custom), and
+	// converter.WithoutSnapshotConverter drops the replay state:
 	//
-	//	useConverter dto.ResultConverter = resultconverter.Convert
-	useConverter dto.ResultConverter = dto.IdentityConverter
+	//	useConverter dto.ResultConverter = converter.WithoutSnapshotConverter
+	useConverter dto.ResultConverter = converter.IdentityConverter
 
 	// pLab constructs your project's game runtime and registrations.
 	// Optimizer collection explicitly uses unoptimized machines.
@@ -124,8 +127,11 @@ func runV2(arguments []string, _ io.Writer, stderr io.Writer) (int, error) {
 		return 1, fmt.Errorf("construct Problab: %w", err)
 	}
 	defer func() { _ = lab.Close() }()
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	signals := make(chan os.Signal, 2)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
+	ctx, release := watchInterrupts(signals, stderr, os.Exit)
+	defer release()
 	return optimizercli.Run(ctx, optimizercli.Options{
 		Config:          raw,
 		ConfigSource:    fmt.Sprintf("embedded %q", embeddedConfigName),
@@ -134,4 +140,40 @@ func runV2(arguments []string, _ io.Writer, stderr io.Writer) (int, error) {
 		CollectionTags:  gameTags,
 		ResultConverter: useConverter,
 	})
+}
+
+// interruptExitCode is the conventional status for termination by SIGINT.
+const interruptExitCode = 130
+
+// watchInterrupts implements the two-stage Ctrl+C contract. The first signal
+// cancels the returned context: optimizer/v2 starts no new work, waits for the
+// Gonum solve that is already running (it cannot be interrupted in-process),
+// and then returns its cancellation error. A second signal exits the whole
+// process immediately through exit. Signal handling lives only here; the SDK
+// never intercepts signals or calls os.Exit. release stops the watcher.
+func watchInterrupts(signals <-chan os.Signal, stderr io.Writer, exit func(int)) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		select {
+		case <-signals:
+		case <-done:
+			return
+		}
+		_, _ = fmt.Fprintln(stderr, "\ncmd/opt: cancellation requested; waiting for the current uninterruptible Gonum solve to return (press Ctrl+C again to exit immediately)")
+		cancel()
+		select {
+		case <-signals:
+			_, _ = fmt.Fprintln(stderr, "cmd/opt: second interrupt; exiting immediately")
+			exit(interruptExitCode)
+		case <-done:
+		}
+	}()
+	return ctx, func() {
+		close(done)
+		<-finished
+		cancel()
+	}
 }
