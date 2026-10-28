@@ -145,7 +145,7 @@ Strategies are factories registered per game in `internal/strategies/`
 choice points (`ChooseFirst`, `ChooseLast` or `ChooseIter`). A YAML can cap the
 segments of one game with `player.max_segments` (default 10).
 
-## Optimal workflow (Problab v0.17.0)
+## Optimal workflow (Problab v0.17.1)
 
 The scaffold uses the regular-file directory `internal/optimal` as its single
 Optimal root. Runtime entrypoints (`make run`, `make dev`, and `make svr`) call
@@ -302,7 +302,7 @@ Never commit proprietary Optimal data to a public repository.
 ## Requirements
 
 - Go 1.27.3+ (see `go.mod`)
-- Problab v0.17.0
+- Problab v0.17.1
 - `make` (optional but recommended)
 
 ## License

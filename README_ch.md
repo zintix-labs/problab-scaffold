@@ -163,7 +163,7 @@ make exp config=cmd/exp/examples/game_3.yaml
 
 ---
 
-## Optimal 工作流程（Problab v0.17.0）
+## Optimal 工作流程（Problab v0.17.1）
 
 Scaffold 将普通文件目录 `internal/optimal` 作为唯一的 Optimal 结果库根目录。
 运行时入口（`make run`、`make dev` 与 `make svr`）调用 `engine.New()`，并可从该
@@ -315,7 +315,7 @@ Git 默认忽略 `internal/optimal/**` 下生成的文件。Optimal 输出可能
 ## 环境要求
 
 - Go 1.27.3 或以上
-- Problab v0.17.0
+- Problab v0.17.1
 - `make`（非必须，但推荐）
 
 ---
