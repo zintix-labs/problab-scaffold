@@ -301,7 +301,7 @@ Never commit proprietary Optimal data to a public repository.
 
 ## Requirements
 
-- Go 1.25+ (see `go.mod`)
+- Go 1.27.3+ (see `go.mod`)
 - Problab v0.17.0
 - `make` (optional but recommended)
 

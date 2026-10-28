@@ -314,7 +314,7 @@ Git 默认忽略 `internal/optimal/**` 下生成的文件。Optimal 输出可能
 
 ## 环境要求
 
-- Go 1.25 或以上
+- Go 1.27.3 或以上
 - Problab v0.17.0
 - `make`（非必须，但推荐）
 
