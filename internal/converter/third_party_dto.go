@@ -57,6 +57,12 @@ type SpinResultWithoutSnapshot struct {
 	GameModes  []dto.GameModeResultDTO `json:"gamemodes,omitempty"`
 	IsGameEnd  bool                    `json:"isend"`
 	Checkpoint json.RawMessage         `json:"cp,omitempty"` // 完整局結束的遊戲可整欄拿掉
+
+	// Segment fields of choice games; empty for single-segment games.
+	BetID      string `json:"bet_id,omitempty"`
+	Cycle      int    `json:"cycle,omitempty"`
+	Choice     *int   `json:"choice,omitempty"`
+	ChooseNext []int  `json:"choose_next,omitempty"`
 }
 
 // WithoutSnapshotConverter is a dto.ResultConverter. The DTO is borrowed for the duration of the
@@ -72,5 +78,9 @@ func WithoutSnapshotConverter(r dto.SpinResult) (json.RawMessage, error) {
 		GameModes:  r.GameModes,
 		IsGameEnd:  r.IsGameEnd,
 		Checkpoint: r.State.Checkpoint,
+		BetID:      r.BetID,
+		Cycle:      r.Cycle,
+		Choice:     r.Choice,
+		ChooseNext: r.ChooseNext,
 	})
 }

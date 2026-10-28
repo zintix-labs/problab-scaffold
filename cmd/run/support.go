@@ -23,6 +23,7 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/zintix-labs/problab"
 	"github.com/zintix-labs/problab-scaffold/pkg/engine"
 	"github.com/zintix-labs/problab/spec"
 	"golang.org/x/text/language"
@@ -41,6 +42,8 @@ type config struct {
 	betMode   int
 	seed      int64
 	pprofmode string
+	choose    string
+	mode      problab.ChooseMode // parsed from choose
 }
 
 type gidFlag struct{ p *spec.GID }
@@ -64,6 +67,7 @@ func bindVar() {
 	flag.IntVar(&cfg.betMode, "mode", 0, "bet mode index")
 	flag.Int64Var(&cfg.seed, "seed", -1, "int64 seed for random number generator")
 	flag.StringVar(&cfg.pprofmode, "p", "", "pprof: '', cpu, heap, allocs")
+	flag.StringVar(&cfg.choose, "choose", "", "choose mode for choice games: first, last")
 
 	flag.Parse()
 
@@ -83,8 +87,11 @@ func executeSimulator() {
 	lab := engine.MustNew()
 	defer func() { _ = lab.Close() }()
 
-	s, err := lab.NewSimulatorWithSeed(cfg.id, cfg.seed)
+	s, err := lab.NewSimulator(cfg.id, problab.MachineConfig{Seed: problab.SeedInt64(cfg.seed)})
 	if err != nil {
+		log.Fatal(err)
+	}
+	if err := s.SetCfg(problab.BetConfig{Choose: cfg.mode}); err != nil {
 		log.Fatal(err)
 	}
 	ent, _ := lab.EntryById(cfg.id)
@@ -93,23 +100,36 @@ func executeSimulator() {
 	green := "\033[1;32m"
 	reset := "\033[0m"
 	p := message.NewPrinter(language.English)
+	choose := ""
+	if cfg.choose != "" {
+		choose = " [CHOOSE:" + cfg.choose + "]"
+	}
 
 	if cfg.player == 1 { // sim machine
 		if cfg.worker == 1 {
 			// pure sim singo core
-			mustPrintf(p, "%s[GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s\n", green, cfg.name, cfg.betMode, cfg.spins, reset)
-			st, used, _ := s.Sim(cfg.betMode, cfg.spins, true)
+			mustPrintf(p, "%s[GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s%s\n", green, cfg.name, cfg.betMode, cfg.spins, choose, reset)
+			st, used, err := s.Sim(cfg.betMode, cfg.spins, true)
+			if err != nil {
+				log.Fatal(err)
+			}
 			st.StdOut(used)
 		} else {
 			// pure sim multi core
-			mustPrintf(p, "%s[WORKERS:%d] [GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s\n", green, cfg.worker, cfg.name, cfg.betMode, cfg.worker*cfg.spins, reset)
-			st, used, _ := s.SimMP(cfg.betMode, cfg.spins, cfg.worker, true) // 併發
+			mustPrintf(p, "%s[WORKERS:%d] [GAME:%s] [PLAYMODE:%d] [SPINS:%d]%s%s\n", green, cfg.worker, cfg.name, cfg.betMode, cfg.worker*cfg.spins, choose, reset)
+			st, used, err := s.SimMP(cfg.betMode, cfg.spins, cfg.worker, true) // 併發
+			if err != nil {
+				log.Fatal(err)
+			}
 			st.StdOut(used)
 		}
 	} else {
 		// sim by player's experenece statemant
-		mustPrintf(p, "%s[WORKERS:%d] [GAME:%s] [PLAYERS:%d BALANCE:%d PLAYMODE:%d SPINS:%d]%s\n", green, cfg.worker, cfg.name, cfg.player, cfg.bets, cfg.betMode, cfg.spins, reset)
-		st, est, used, _ := s.SimPlayers(cfg.worker, cfg.player, cfg.bets, cfg.betMode, cfg.spins, true)
+		mustPrintf(p, "%s[WORKERS:%d] [GAME:%s] [PLAYERS:%d BALANCE:%d PLAYMODE:%d SPINS:%d]%s%s\n", green, cfg.worker, cfg.name, cfg.player, cfg.bets, cfg.betMode, cfg.spins, choose, reset)
+		st, est, used, err := s.SimPlayers(cfg.worker, cfg.player, cfg.bets, cfg.betMode, cfg.spins, true)
+		if err != nil {
+			log.Fatal(err)
+		}
 		st.StdOut(used)
 		est.Out()
 	}
@@ -144,6 +164,13 @@ func (cfg *config) valid() {
 	if cfg.spins < 1 {
 		log.Fatal("value err : spins must > 0")
 	}
+
+	// Choose mode: empty means unset; only first and last are accepted.
+	mode, err := problab.ParseChooseMode(cfg.choose)
+	if err != nil {
+		log.Fatal("value err : choose must be first or last")
+	}
+	cfg.mode = mode
 
 	// When simulating player-based sessions, cap spins per player to 15,000.
 	// This is an intentional business constraint rather than a technical limit.

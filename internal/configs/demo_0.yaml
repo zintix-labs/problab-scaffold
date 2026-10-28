@@ -35,15 +35,14 @@ max_win_limit : 400000
 optimal_setting:
   use_optimal: false
 
-  # Recommended: Artifact v1. Set use_optimal to true before enabling it.
-  # artifact: artifact_v1/game_0/manifest.json
-
-  # Legacy format; mutually exclusive with artifact.
-  # Set use_optimal to true before enabling these paths.
+  # cmd/opt publishes each bet mode as gacha.json.zst + seed_bank.bin in an
+  # immutable directory <output.directory>/gacha/game_0/mode_0/<id>/. Copy it
+  # under internal/optimal, set use_optimal to true, and list one pair per bet
+  # mode (see internal/optimal/README.md):
   # gachas:
-  #   - gacha/game_0/gacha_0.json.zst
+  #   - gacha/game_0/mode_0/<id>/gacha.json.zst
   # seed_bank:
-  #   - gacha/game_0/seed_bank_0.bin
+  #   - gacha/game_0/mode_0/<id>/seed_bank.bin
 
 # Game mode settings. Each entry represents a state; the game transitions between states (e.g., BaseGame -> FreeGame).
 game_mode_settings:
