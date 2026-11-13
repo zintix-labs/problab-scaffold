@@ -3,7 +3,7 @@ module github.com/zintix-labs/problab-scaffold
 go 1.27.3
 
 require (
-	github.com/zintix-labs/problab v0.18.1
+	github.com/zintix-labs/problab v0.18.2
 	golang.org/x/text v0.43.0
 )
 
