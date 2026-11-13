@@ -145,11 +145,35 @@ Strategies are factories registered per game in `internal/strategies/`
 choice points (`ChooseFirst`, `ChooseLast` or `ChooseIter`). A YAML can cap the
 segments of one game with `player.max_segments` (default 10).
 
-## Optimal workflow (Problab v0.17.1)
+## Dev panel
+
+`make dev` opens the ProbLab Dev panel at `http://localhost:5808/dev`: the
+board with hit highlights, step-by-step playback, a timeline grouped by
+segment, player choices, and exact replay of a whole bet from each segment's
+snapshot. Use `go run ./cmd/dev -addr :5810 -open=false` for another port or no
+browser.
+
+- `cmd/dev` follows `cmd/exp`: the variables at the top are the injection
+  points. `pLab` is `engine.NewForDev` (assembled with `problab.New`,
+  `RegisterAll` and `Freeze`, so optimal pairs load per game on first use) and
+  `devGames` is `internal/devgames`.
+- `internal/devgames` holds one `<gid>.js` plugin per game that draws
+  game-specific details. A game without a plugin uses the common panel. While
+  writing a plugin, set `devGames` to `os.DirFS("internal/devgames")` to pick
+  up edits on browser reload.
+- The panel serves only `/dev` (no `/v1`, no machine pools) and has no
+  authentication; do not expose it publicly.
+
+See the [ProbLab Dev guide](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)
+for the panel, the API and the plugin interface.
+
+## Optimal workflow (Problab v0.18.0)
 
 The scaffold uses the regular-file directory `internal/optimal` as its single
-Optimal root. Runtime entrypoints (`make run`, `make dev`, and `make svr`) call
-`engine.New()` and may read published gacha pairs from this root. `make opt`
+Optimal root. Runtime entrypoints (`make run` and `make svr`) call
+`engine.New()` and may read published gacha pairs from this root. `make dev`
+calls `engine.NewForDev()`: the same wiring, but each game's pair is loaded on
+its first spin instead of at startup (see "Dev panel"). `make opt`
 calls `engine.NewForOptimizer()` instead: it uses the same project-owned PRNG
 factory, embedded configs, and logic registry, but deliberately does not
 preload a published pair while collecting raw game results.
@@ -296,13 +320,13 @@ Never commit proprietary Optimal data to a public repository.
 - `make exp` : Analyze finite player experiences (`config=<path>` for another YAML)
 - `make opt` : Run optimizer (embedded `cmd/opt/opt_cfg.yaml`)
 - `make svr` : Run HTTP server
-- `make dev` : Run Dev web panel
+- `make dev` : Run the ProbLab Dev panel (`go run ./cmd/dev -addr :5810 -open=false` for another port, no browser)
 - `make help` : Show all targets and args
 
 ## Requirements
 
 - Go 1.27.3+ (see `go.mod`)
-- Problab v0.17.1
+- Problab v0.18.0
 - `make` (optional but recommended)
 
 ## License
