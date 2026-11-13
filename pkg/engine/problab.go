@@ -26,7 +26,9 @@
 //     is recommended to reduce operational complexity.
 //
 // The goal is to keep app code and cmd/* entrypoints clean: they can call `engine.New()`
-// (or `engine.MustNew()` for CLI/dev) and focus on running simulation/server/dev.
+// (or `engine.MustNew()` for CLI), `engine.NewForDev()` for the dev panel, or
+// `engine.NewForOptimizer()` for optimizer collection, and focus on running
+// simulation/server/dev.
 package engine
 
 import (
@@ -115,6 +117,32 @@ func NewForOptimizer() (*problab.Problab, error) {
 		pRNGFactory,
 		cfgs,
 		logics,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := pb.RegisterAll(); err != nil {
+		_ = pb.Close()
+		return nil, err
+	}
+
+	pb.Freeze()
+	return pb, nil
+}
+
+// NewForDev constructs the project-owned Lab for the ProbLab Dev panel (cmd/dev).
+// It shares the runtime PRNG factory, configs, logic registry and optimal root
+// with New, but assembles with problab.New, RegisterAll and Freeze instead of
+// NewAuto: NewAuto preloads every game's published gacha pair at startup, while
+// this loads each game's pair on its first spin. Production entrypoints keep
+// New, which reports a broken pair at startup instead of on the first request.
+func NewForDev() (*problab.Problab, error) {
+	pb, err := problab.New(
+		pRNGFactory,
+		cfgs,
+		logics,
+		optimalOption,
 	)
 	if err != nil {
 		return nil, err

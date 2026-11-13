@@ -163,11 +163,28 @@ make exp config=cmd/exp/examples/game_3.yaml
 
 ---
 
-## Optimal 工作流程（Problab v0.17.1）
+## Dev 面板
+
+`make dev` 打开 ProbLab Dev 面板 `http://localhost:5808/dev`：盘面与中奖高亮、逐步播放、
+按段分组的时间轴、player 选择，以及用每一段的快照完整回放一局。换端口或不打开浏览器：
+`go run ./cmd/dev -addr :5810 -open=false`。
+
+- `cmd/dev` 与 `cmd/exp` 相同，文件最上方的变量是注入点：`pLab` 为 `engine.NewForDev`
+  （以 `problab.New`、`RegisterAll`、`Freeze` 组装，optimal 结果对按游戏在第一次使用时加载），
+  `devGames` 为 `internal/devgames`。
+- `internal/devgames` 每台游戏一个 `<gid>.js` 插件，负责绘制该游戏特有的信息；没有插件的
+  游戏使用通用面板。编写插件时可把 `devGames` 改为 `os.DirFS("internal/devgames")`，
+  修改后刷新浏览器即可生效。
+- 面板只提供 `/dev`（没有 `/v1`，也不建立机台池），没有任何验证机制，不得对外公开。
+
+面板、API 与插件接口见 [ProbLab Dev 说明](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)。
+
+## Optimal 工作流程（Problab v0.18.0）
 
 Scaffold 将普通文件目录 `internal/optimal` 作为唯一的 Optimal 结果库根目录。
-运行时入口（`make run`、`make dev` 与 `make svr`）调用 `engine.New()`，并可从该
-目录读取已发布的 gacha 结果对。`make opt` 则调用 `engine.NewForOptimizer()`：它使用
+运行时入口（`make run` 与 `make svr`）调用 `engine.New()`，并可从该
+目录读取已发布的 gacha 结果对。`make dev` 调用 `engine.NewForDev()`：接线相同，但每台
+游戏的结果对在第一次 Spin 时才加载，不在启动时一次加载（见“Dev 面板”）。`make opt` 则调用 `engine.NewForOptimizer()`：它使用
 同一套由项目注入的 PRNG Factory、embed 配置与 Logic Registry，但在收集原始游戏结果
 时不会预加载已经发布的结果对。
 
@@ -306,7 +323,7 @@ Git 默认忽略 `internal/optimal/**` 下生成的文件。Optimal 输出可能
 - `make run`：运行模拟器（默认 `game=0`；选择游戏固定选 `first`）
 - `make exp`：分析有限玩家体验（`config=<path>` 改用其他 YAML）
 - `make opt`：运行 Optimizer（embed 的 `cmd/opt/opt_cfg.yaml`）
-- `make dev`：启动 Dev Web 面板
+- `make dev`：启动 ProbLab Dev 面板（`go run ./cmd/dev -addr :5810 -open=false` 可换端口、不打开浏览器）
 - `make svr`：启动 HTTP Server
 - `make help`：查看全部命令
 
@@ -315,7 +332,7 @@ Git 默认忽略 `internal/optimal/**` 下生成的文件。Optimal 输出可能
 ## 环境要求
 
 - Go 1.27.3 或以上
-- Problab v0.17.1
+- Problab v0.18.0
 - `make`（非必须，但推荐）
 
 ---

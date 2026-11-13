@@ -15,78 +15,71 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"flag"
 	"fmt"
-	"log"
-	"net"
-	"os/exec"
-	"runtime"
-	"time"
+	"io"
+	"io/fs"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/zintix-labs/problab"
+	"github.com/zintix-labs/problab-scaffold/internal/devgames"
 	"github.com/zintix-labs/problab-scaffold/pkg/engine"
-	"github.com/zintix-labs/problab/errs"
-	"github.com/zintix-labs/problab/server"
-	"github.com/zintix-labs/problab/server/logger"
-	"github.com/zintix-labs/problab/server/svrcfg"
+	devcli "github.com/zintix-labs/problab/server/api/dev/cli"
 )
 
+// Application-owned injection points. A private project replaces these sources;
+// the execution/lifecycle code below stays unchanged.
+var (
+	// pLab must construct your project's games with the same PRNG factory,
+	// configs, logics and optimal root as production. engine.NewForDev assembles
+	// them with problab.New, RegisterAll and Freeze, so each game's gacha pair is
+	// loaded on its first spin instead of at startup.
+	// This command owns and closes the returned Lab.
+	pLab func() (*problab.Problab, error) = engine.NewForDev
+
+	// devGames holds the panel plugins, one <gid>.js per game at its root, that
+	// draw game-specific details (see internal/devgames). A game without a
+	// plugin, or a nil devGames, uses the common panel only. An embed.FS needs a
+	// restart after editing a plugin; os.DirFS("internal/devgames") picks up
+	// edits on browser reload.
+	devGames fs.FS = devgames.FS
+)
+
+// The application owns its Lab and plugins; the Problab dev panel facade serves
+// them in svrcfg.ModePanel (only /dev, no machine pools) until Ctrl+C.
 func main() {
-	runDevPanel()
+	code, err := run(os.Args[1:], os.Stdout)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "cmd/dev: %v\n", err)
+	}
+	if code != 0 {
+		os.Exit(code)
+	}
 }
 
-func runDevPanel() {
-	url := "http://localhost:5808/dev"
-	go func() {
-		// Wait until the server is actually listening, then open the browser.
-		if err := waitForTCP(":5808", 5*time.Second); err != nil {
-			log.Fatal("dev server not ready:" + err.Error())
-		}
-		if err := openBrowser(url); err != nil {
-			log.Fatal("open browser failed:" + err.Error())
+func run(args []string, output io.Writer) (code int, err error) {
+	flags := flag.NewFlagSet("cmd/dev", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	addr := flags.String("addr", devcli.DefaultAddr, "listen address")
+	open := flags.Bool("open", true, "open the panel in the default browser")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
+		return 1, fmt.Errorf("cmd/dev accepts only -addr <address> and -open=<bool>")
+	}
+	lab, err := pLab()
+	if err != nil {
+		return 1, err
+	}
+	defer func() {
+		err = errors.Join(err, lab.Close())
+		if err != nil {
+			code = 1
 		}
 	}()
-	cfg, err := newSvrCfg()
-	if err != nil {
-		log.Fatal("set server configs error:" + err.Error())
-	}
-	defer func() { _ = cfg.Problab.Close() }()
-	server.Run(cfg)
-}
-
-func waitForTCP(addr string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	url := "127.0.0.1" + addr
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", url, 200*time.Millisecond)
-		if err == nil {
-			_ = conn.Close()
-			return nil
-		}
-	}
-	return fmt.Errorf("timeout waiting for %s", addr)
-}
-
-func openBrowser(url string) error {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default:
-		cmd = exec.Command("xdg-open", url)
-	}
-	return cmd.Start()
-}
-
-func newSvrCfg() (*svrcfg.SvrCfg, error) {
-	lab, err := engine.New()
-	if err != nil {
-		return nil, errs.NewFatal("new problab failed:" + err.Error())
-	}
-	scfg := &svrcfg.SvrCfg{
-		Log:         logger.NewDefaultAsyncLogger(logger.ModeDev),
-		SlotBufSize: 1,
-		Problab:     lab,
-	}
-	return scfg, nil
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return devcli.Run(ctx, devcli.Options{Lab: lab, DevGames: devGames, Addr: *addr, OpenBrowser: *open, Output: output})
 }

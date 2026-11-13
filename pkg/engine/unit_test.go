@@ -147,6 +147,32 @@ func TestNewValidation(t *testing.T) {
 	})
 }
 
+// NewForDev registers the same games as New and builds working machines.
+func TestNewForDev(t *testing.T) {
+	originalOption := optimalOption
+	optimalOption = problab.WithOptimalDir(filepath.Join("..", "..", optimalDir))
+	t.Cleanup(func() { optimalOption = originalOption })
+
+	lab, err := NewForDev()
+	if err != nil {
+		t.Fatalf("NewForDev() error: %v", err)
+	}
+	t.Cleanup(func() { _ = lab.Close() })
+	want := newTestLab(t).IDs()
+	if got := lab.IDs(); len(got) != len(want) {
+		t.Fatalf("NewForDev registered %v, New registered %v", got, want)
+	}
+	for _, id := range lab.IDs() {
+		m, err := lab.NewMachine(id, problab.MachineConfig{})
+		if err != nil {
+			t.Fatalf("NewMachine(%d) error: %v", id, err)
+		}
+		if result := m.SpinUnsafe(problab.SpinInput{BetMult: 1}); result == nil {
+			t.Fatalf("NewMachine(%d) returned nil Spin result", id)
+		}
+	}
+}
+
 func configExists(name string) bool {
 	for _, src := range cfgs {
 		if src == nil {
