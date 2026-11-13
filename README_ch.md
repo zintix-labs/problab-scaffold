@@ -175,11 +175,9 @@ make exp config=cmd/exp/examples/game_3.yaml
 - `internal/devgames` 每台游戏一个 `<gid>.js` 插件，负责绘制该游戏特有的信息；没有插件的
   游戏使用通用面板。编写插件时可把 `devGames` 改为 `os.DirFS("internal/devgames")`，
   修改后刷新浏览器即可生效。
-- `internal/devgames/theme.css` 用来覆写面板配色（H/L 色序、W/C/S 图标，可只改某台游戏或某个
-  图标）。文件内的规则默认全部注释掉，面板使用 Problab 的默认配色。
 - 面板只提供 `/dev`（没有 `/v1`，也不建立机台池），没有任何验证机制，不得对外公开。
 
-面板、API、插件接口与配色变量见 [ProbLab Dev 说明](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)。
+面板、API 与插件接口见 [ProbLab Dev 说明](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)。
 
 ## Optimal 工作流程（Problab v0.18.1）
 

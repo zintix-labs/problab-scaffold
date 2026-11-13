@@ -13,14 +13,13 @@
 // limitations under the License.
 
 // Package devgames holds the ProbLab Dev panel plugins, one <gid>.js per game,
-// and the optional panel colors in theme.css, injected by cmd/dev. A game
-// without a plugin is shown with the common panel. See server/api/dev/README.md
-// in Problab for the plugin interface and the color variables.
+// injected by cmd/dev. A game without a plugin is shown with the common panel.
+// See server/api/dev/README.md in Problab for the plugin interface.
 package devgames
 
 import "embed"
 
-// FS provides the panel plugins (<gid>.js) and theme.css at its root.
+// FS provides the panel plugins (<gid>.js) at its root.
 //
-//go:embed *.js *.css
+//go:embed *.js
 var FS embed.FS

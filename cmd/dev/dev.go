@@ -43,9 +43,9 @@ var (
 
 	// devGames holds the panel plugins, one <gid>.js per game at its root, that
 	// draw game-specific details (see internal/devgames). A game without a
-	// plugin, or a nil devGames, uses the common panel only. theme.css at the same
-	// root overrides the panel colors. An embed.FS needs a restart after editing
-	// a plugin; os.DirFS("internal/devgames") picks up edits on browser reload.
+	// plugin, or a nil devGames, uses the common panel only. An embed.FS needs a
+	// restart after editing a plugin; os.DirFS("internal/devgames") picks up
+	// edits on browser reload.
 	devGames fs.FS = devgames.FS
 )
 
