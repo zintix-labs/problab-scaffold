@@ -167,7 +167,7 @@ browser.
 See the [ProbLab Dev guide](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)
 for the panel, the API and the plugin interface.
 
-## Optimal workflow (Problab v0.18.0)
+## Optimal workflow (Problab v0.18.1)
 
 The scaffold uses the regular-file directory `internal/optimal` as its single
 Optimal root. Runtime entrypoints (`make run` and `make svr`) call
@@ -326,7 +326,7 @@ Never commit proprietary Optimal data to a public repository.
 ## Requirements
 
 - Go 1.27.3+ (see `go.mod`)
-- Problab v0.18.0
+- Problab v0.18.1
 - `make` (optional but recommended)
 
 ## License
