@@ -148,10 +148,10 @@ segments of one game with `player.max_segments` (default 10).
 ## Dev panel
 
 `make dev` opens the ProbLab Dev panel at `http://localhost:5808/dev`: the
-board with hit highlights, step-by-step playback, a timeline grouped by
-segment, player choices, and exact replay of a whole bet from each segment's
-snapshot. Use `go run ./cmd/dev -addr :5810 -open=false` for another port or no
-browser.
+board with hit highlights, step-by-step and continuous playback, a timeline
+grouped by cycle (segment), player choices, and exact replay of a whole bet from
+each cycle's snapshot. Press `?` in the panel for the keyboard shortcuts. Use
+`go run ./cmd/dev -addr :5810 -open=false` for another port or no browser.
 
 - `cmd/dev` follows `cmd/exp`: the variables at the top are the injection
   points. `pLab` is `engine.NewForDev` (assembled with `problab.New`,
@@ -161,13 +161,17 @@ browser.
   game-specific details. A game without a plugin uses the common panel. While
   writing a plugin, set `devGames` to `os.DirFS("internal/devgames")` to pick
   up edits on browser reload.
+- A plugin can name each ModeID with `modes` (for example
+  `{ 0: "BaseGame", 1: "FreeGame" }`); the panel shows it as
+  `State 1 · ModeID 1 [FreeGame]`. When writing a plugin, including with an AI
+  assistant, ask the game's author for these names first.
 - The panel serves only `/dev` (no `/v1`, no machine pools) and has no
   authentication; do not expose it publicly.
 
 See the [ProbLab Dev guide](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)
 for the panel, the API and the plugin interface.
 
-## Optimal workflow (Problab v0.18.2)
+## Optimal workflow
 
 The scaffold uses the regular-file directory `internal/optimal` as its single
 Optimal root. Runtime entrypoints (`make run` and `make svr`) call
@@ -326,7 +330,7 @@ Never commit proprietary Optimal data to a public repository.
 ## Requirements
 
 - Go 1.27.3+ (see `go.mod`)
-- Problab v0.18.2
+- Problab (the version in `go.mod`)
 - `make` (optional but recommended)
 
 ## License

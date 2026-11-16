@@ -165,9 +165,9 @@ make exp config=cmd/exp/examples/game_3.yaml
 
 ## Dev 面板
 
-`make dev` 打开 ProbLab Dev 面板 `http://localhost:5808/dev`：盘面与中奖高亮、逐步播放、
-按段分组的时间轴、player 选择，以及用每一段的快照完整回放一局。换端口或不打开浏览器：
-`go run ./cmd/dev -addr :5810 -open=false`。
+`make dev` 打开 ProbLab Dev 面板 `http://localhost:5808/dev`：盘面与中奖高亮、逐步与连续播放、
+按 Cycle（段）分组的时间轴、player 选择，以及用每个 Cycle 的快照完整回放一局。在面板中按 `?`
+查看快捷键。换端口或不打开浏览器：`go run ./cmd/dev -addr :5810 -open=false`。
 
 - `cmd/dev` 与 `cmd/exp` 相同，文件最上方的变量是注入点：`pLab` 为 `engine.NewForDev`
   （以 `problab.New`、`RegisterAll`、`Freeze` 组装，optimal 结果对按游戏在第一次使用时加载），
@@ -175,11 +175,13 @@ make exp config=cmd/exp/examples/game_3.yaml
 - `internal/devgames` 每台游戏一个 `<gid>.js` 插件，负责绘制该游戏特有的信息；没有插件的
   游戏使用通用面板。编写插件时可把 `devGames` 改为 `os.DirFS("internal/devgames")`，
   修改后刷新浏览器即可生效。
+- 插件可以用 `modes` 为每个 ModeID 命名（例如 `{ 0: "BaseGame", 1: "FreeGame" }`），面板会显示为
+  `State 1 · ModeID 1 [FreeGame]`。编写插件时（包括与 AI 协作），先向游戏作者确认这些名称。
 - 面板只提供 `/dev`（没有 `/v1`，也不建立机台池），没有任何验证机制，不得对外公开。
 
 面板、API 与插件接口见 [ProbLab Dev 说明](https://github.com/zintix-labs/problab/blob/main/server/api/dev/README.md)。
 
-## Optimal 工作流程（Problab v0.18.2）
+## Optimal 工作流程
 
 Scaffold 将普通文件目录 `internal/optimal` 作为唯一的 Optimal 结果库根目录。
 运行时入口（`make run` 与 `make svr`）调用 `engine.New()`，并可从该
@@ -332,7 +334,7 @@ Git 默认忽略 `internal/optimal/**` 下生成的文件。Optimal 输出可能
 ## 环境要求
 
 - Go 1.27.3 或以上
-- Problab v0.18.2
+- Problab（版本见 `go.mod`）
 - `make`（非必须，但推荐）
 
 ---
