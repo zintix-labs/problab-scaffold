@@ -151,7 +151,9 @@ segments of one game with `player.max_segments` (default 10).
 board with hit highlights, step-by-step and continuous playback, a timeline
 grouped by cycle (segment), player choices, and exact replay of a whole bet from
 each cycle's snapshot. Press `?` in the panel for the keyboard shortcuts. Use
-`go run ./cmd/dev -addr :5810 -open=false` for another port or no browser.
+`go run ./cmd/dev -addr :5810 -open=false` for another port or no browser, and
+`go run ./cmd/dev -lang zh` for Chinese as the default UI language; "EN / 中" at
+the top right of the panel switches between English and Chinese.
 
 - `cmd/dev` follows `cmd/exp`: the variables at the top are the injection
   points. `pLab` is `engine.NewForDev` (assembled with `problab.New`,
