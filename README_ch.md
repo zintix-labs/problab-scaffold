@@ -167,7 +167,8 @@ make exp config=cmd/exp/examples/game_3.yaml
 
 `make dev` 打开 ProbLab Dev 面板 `http://localhost:5808/dev`：盘面与中奖高亮、逐步与连续播放、
 按 Cycle（段）分组的时间轴、player 选择，以及用每个 Cycle 的快照完整回放一局。在面板中按 `?`
-查看快捷键。换端口或不打开浏览器：`go run ./cmd/dev -addr :5810 -open=false`。
+查看快捷键。换端口或不打开浏览器：`go run ./cmd/dev -addr :5810 -open=false`；默认界面语言改成中文：
+`go run ./cmd/dev -lang zh`，面板右上角的「EN／中」可切换中英文。
 
 - `cmd/dev` 与 `cmd/exp` 相同，文件最上方的变量是注入点：`pLab` 为 `engine.NewForDev`
   （以 `problab.New`、`RegisterAll`、`Freeze` 组装，optimal 结果对按游戏在第一次使用时加载），
